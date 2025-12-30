@@ -153,7 +153,7 @@ export default function useCanvas(config: CanvasConfig) {
     });
   }, [canvasWidth, canvasHeight, getContainerSize, updateViewport]);
 
-  // 坐标转换
+  // 坐标转换（屏幕转画布）
   const screenToCanvas = useCallback((screenX: number, screenY: number) => {
     if (!containerRef.current) return { x: 0, y: 0 };
     const rect = containerRef.current.getBoundingClientRect();
@@ -164,6 +164,7 @@ export default function useCanvas(config: CanvasConfig) {
     };
   }, []);
 
+  // 坐标转换（画布转屏幕）
   const canvasToScreen = useCallback((canvasX: number, canvasY: number) => {
     if (!containerRef.current) return { x: 0, y: 0 };
     const rect = containerRef.current.getBoundingClientRect();
