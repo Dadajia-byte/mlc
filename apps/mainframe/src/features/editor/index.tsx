@@ -99,7 +99,6 @@ const Editor = () => {
           ))}
           <CanvasSelection
             screenToCanvas={(x, y) => canvasRef.current?.screenToCanvas(x, y) ?? { x: 0, y: 0 }}
-            components={canvas.components}
             canvasContainerRef={canvasContainerRef}
             toolMode={viewportState.toolMode}
           />
