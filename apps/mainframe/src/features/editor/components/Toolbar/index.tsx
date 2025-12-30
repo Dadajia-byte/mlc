@@ -31,7 +31,7 @@ const Toolbar = ({ canvasRef, scale, toolMode }: ToolbarProps) => {
 
   const toolbarItems = useMemo(() => [
     {
-      icon: 'icon-shouhuajiantou',
+      icon: 'icon-zhuashou',
       key: ToolMode.HAND,
       tooltip: '抓手',
       onClick: () => canvasRef.current?.setToolMode(ToolMode.HAND),

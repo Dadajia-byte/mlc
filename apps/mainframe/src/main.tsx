@@ -6,7 +6,7 @@ import { initFlexible } from '@mlc/utils'
 import './styles/normalize.scss'
 import { initMaterials } from './registry/index'
 import 'antd/dist/antd.css'; // 引入 Ant Design 样式(后续再引入优化)
-import './assets/icons/font_73sqza6uhvv/iconfont.css'
+import './assets/icons/iconfont/iconfont.css'
 
 initFlexible({
   designWidth: 1920,

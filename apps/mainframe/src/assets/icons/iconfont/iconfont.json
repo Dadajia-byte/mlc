@@ -132,6 +132,13 @@
       "unicode_decimal": 58924
     },
     {
+      "icon_id": "5712053",
+      "name": "抓手",
+      "font_class": "zhuashou",
+      "unicode": "e640",
+      "unicode_decimal": 58944
+    },
+    {
       "icon_id": "12550481",
       "name": "发布",
       "font_class": "fabu",
