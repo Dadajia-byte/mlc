@@ -8,9 +8,10 @@ interface ToolbarProps {
   canvasRef: React.RefObject<CanvasRef>;
   scale: number;
   toolMode: ToolMode;
+  setToolMode: (toolMode: ToolMode) => void;
 }
 
-const Toolbar = ({ canvasRef, scale, toolMode }: ToolbarProps) => {
+const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
   const [showMore, setShowMore] = useState(true);
   const [currentScale, setCurrentScale] = useState(scale);
 
@@ -34,13 +35,13 @@ const Toolbar = ({ canvasRef, scale, toolMode }: ToolbarProps) => {
       icon: 'icon-zhuashou',
       key: ToolMode.HAND,
       tooltip: '抓手',
-      onClick: () => canvasRef.current?.setToolMode(ToolMode.HAND),
+      onClick: () => setToolMode(ToolMode.HAND),
     },
     {
       icon: 'icon-shubiaojiantou',
       key: ToolMode.MOUSE,
       tooltip: '鼠标',
-      onClick: () => canvasRef.current?.setToolMode(ToolMode.MOUSE),
+      onClick: () => setToolMode(ToolMode.MOUSE),
     },
     {
       icon: 'icon-shiyingpingmu',
@@ -54,7 +55,7 @@ const Toolbar = ({ canvasRef, scale, toolMode }: ToolbarProps) => {
       tooltip: '原始尺寸',
       onClick: () => canvasRef.current?.zoomTo(1),
     },
-  ], [canvasRef]);
+  ], [canvasRef, setToolMode]);
 
   return (
     <div className="toolbar">

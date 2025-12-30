@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { ComponentSchema } from '@/types/schema';
+import { ComponentSchema, ToolMode } from '@/types/schema';
 import { getComponent, ComponentLibrary } from '@/registry/index';
 import useCanvasStore from '@/store/canvasStore';
 import useDrag from './useDrag';
@@ -12,6 +12,7 @@ interface ComponentRendererProps {
   onUpdate?: (id: string, updates: Partial<ComponentSchema>) => void;
   scale?: number;
   canvasSize?: { width: number; height: number };
+  toolMode: ToolMode;
 }
 
 const ComponentRenderer = React.memo(({
@@ -21,6 +22,7 @@ const ComponentRenderer = React.memo(({
   onUpdate,
   scale = 1,
   canvasSize,
+  toolMode,
 }: ComponentRendererProps) => {
   const { selectedComponents } = useCanvasStore();
   const isEditMode = mode === 'edit';
@@ -103,15 +105,16 @@ const ComponentRenderer = React.memo(({
           onUpdate={onUpdate}
           scale={scale}
           canvasSize={canvasSize}
+          toolMode={toolMode}
         />
       ));
     }
     return propsChildren;
-  }, [schema.children, propsChildren, mode, onSelect, onUpdate, scale, canvasSize]);
+  }, [schema.children, propsChildren, mode, onSelect, onUpdate, scale, canvasSize, toolMode]);
 
   return (
     <div
-      onMouseDown={isEditMode ? dragProps.onMouseDown : undefined}
+      onMouseDown={isEditMode && toolMode !== ToolMode.HAND ? dragProps.onMouseDown : undefined} // 编辑模式且画布不处于抓手状态
       onClick={handleClick}
       style={mergedStyle}
       className={`component-wrapper ${isSelected ? 'selected' : ''} ${schema.editor?.locked ? 'locked' : ''}`}

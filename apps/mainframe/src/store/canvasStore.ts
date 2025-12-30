@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { CanvasSchema, ComponentSchema } from '@/types/schema';
+import { CanvasSchema, ComponentSchema, ToolMode } from '@/types/schema';
 import { deepClone } from '@mlc/utils';
 import { DEFAULT_CANVAS_SCHEMA } from '@/constants';
 
@@ -8,6 +8,7 @@ interface CanvasStore {
   selectedComponents: string[]; // 选中的组件ID列表
   history: CanvasSchema[]; // 历史记录
   historyIndex: number; // 历史记录索引
+  toolMode: ToolMode; // 工具模式
 
   /**
    * 设置画布
@@ -37,6 +38,8 @@ interface CanvasStore {
    * 重做
    */
   redo: () => void;
+
+  setToolMode: (toolMode: ToolMode) => void;
 }
 
 const useCanvasStore = create<CanvasStore>((set,get) => ({
@@ -44,6 +47,7 @@ const useCanvasStore = create<CanvasStore>((set,get) => ({
   selectedComponents: [],
   history: [],
   historyIndex: -1, 
+  toolMode: ToolMode.MOUSE,
   /**
    * 设置画布
    */
@@ -156,6 +160,20 @@ const useCanvasStore = create<CanvasStore>((set,get) => ({
     if (historyIndex < history.length - 1) {
       const newIndex = historyIndex + 1;
       set({ canvas: history[newIndex], historyIndex: newIndex });
+    }
+  },
+  /**
+   * 设置工具模式
+   */
+  setToolMode: (toolMode: ToolMode)=>{
+    const prevMode = get().toolMode;
+    if (prevMode === toolMode) return; // 避免重复设置
+    
+    set({ toolMode });
+
+    // 抓手模式下清空选中的组件
+    if (toolMode === ToolMode.HAND) {
+      get().selectComponent(null);
     }
   },
 }));

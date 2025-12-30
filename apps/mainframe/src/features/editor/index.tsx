@@ -7,12 +7,19 @@ import { Canvas, CanvasRef, ComponentRenderer, Toolbar, CanvasSelection } from '
 import './index.scss';
 
 const Editor = () => {
-  const { canvas, addComponent, updateComponent, selectComponent } = useCanvasStore();
+  const { 
+    canvas,
+    addComponent,
+    updateComponent,
+    selectComponent,
+    toolMode,
+    setToolMode
+  } = useCanvasStore();
   
   const canvasRef = useRef<CanvasRef>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   
-  const [viewportState, setViewportState] = useState({ scale: 1, toolMode: ToolMode.MOUSE });
+  const [viewportState, setViewportState] = useState({ scale: 1 });
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -54,7 +61,12 @@ const Editor = () => {
 
     addComponent(newComponent);
     selectComponent(newComponent.id);
-  }, [addComponent, selectComponent, canvas]);
+
+    // 拖拽时如果是抓手模式，拖拽完成后自动切换到鼠标模式
+    if (toolMode === ToolMode.HAND) {
+      setToolMode(ToolMode.MOUSE);
+    }
+  }, [addComponent, selectComponent, canvas, toolMode, setToolMode]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => e.preventDefault(), []);
 
@@ -62,7 +74,6 @@ const Editor = () => {
     if (!canvasRef.current) return;
     setViewportState({
       scale: canvasRef.current.getViewport().scale,
-      toolMode: canvasRef.current.getToolMode(),
     });
   }, []);
 
@@ -77,6 +88,7 @@ const Editor = () => {
         minScale={0.3}
         maxScale={3}
         onViewportChange={handleViewportChange}
+        toolMode={toolMode}
       >
         <div
           ref={canvasContainerRef}
@@ -95,12 +107,15 @@ const Editor = () => {
               onUpdate={handleUpdate}
               scale={viewportState.scale}
               canvasSize={{ width: canvas.width, height: canvas.height }}
+              toolMode={toolMode}
             />
           ))}
+          {/* 简单处理：抓手模式下增加覆盖层，阻止事件响应 */}
+          {toolMode === ToolMode.HAND && (<div className="canvas-hand-overlay"/>)}
           <CanvasSelection
             screenToCanvas={(x, y) => canvasRef.current?.screenToCanvas(x, y) ?? { x: 0, y: 0 }}
             canvasContainerRef={canvasContainerRef}
-            toolMode={viewportState.toolMode}
+            toolMode={toolMode}
           />
         </div>
       </Canvas>
@@ -108,7 +123,8 @@ const Editor = () => {
       <Toolbar
         canvasRef={canvasRef}
         scale={viewportState.scale}
-        toolMode={viewportState.toolMode}
+        toolMode={toolMode}
+        setToolMode={setToolMode}
       />
     </div>
   );

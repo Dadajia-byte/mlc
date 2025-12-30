@@ -3,10 +3,11 @@ import useCanvas, { CanvasConfig, ViewportState } from './useCanvas';
 import { ToolMode } from '@/types/schema';
 import './index.scss';
 
-export interface CanvasProps extends Omit<CanvasConfig, 'onViewportChange'> {
+export interface CanvasProps extends Omit<CanvasConfig, 'onViewportChange' | 'toolMode'> {
   children: React.ReactNode;
   className?: string;
   onViewportChange?: () => void;
+  toolMode: ToolMode;
 }
 
 export interface CanvasRef {
@@ -19,19 +20,17 @@ export interface CanvasRef {
   canvasToScreen: (canvasX: number, canvasY: number) => { x: number; y: number };
   getViewport: () => ViewportState;
   getToolMode: () => ToolMode;
-  setToolMode: (mode: ToolMode) => void;
   config: { minScale: number; maxScale: number; scaleStep: number };
 }
 
 const Canvas = forwardRef<CanvasRef, CanvasProps>(
-  ({ children, className, onViewportChange, ...config }, ref) => {
+  ({ children, className, onViewportChange, toolMode, ...config }, ref) => {
     const {
       viewport,
-      toolMode,
+      toolMode: currentToolMode,
       containerRef,
       containerProps,
       canvasStyle,
-      setToolMode,
       zoomIn,
       zoomOut,
       zoomTo,
@@ -40,7 +39,7 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
       screenToCanvas,
       canvasToScreen,
       config: canvasConfig,
-    } = useCanvas({ ...config, onViewportChange });
+    } = useCanvas({ ...config, onViewportChange, toolMode });
 
     useImperativeHandle(ref, () => ({
       zoomIn,
@@ -51,10 +50,9 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
       screenToCanvas,
       canvasToScreen,
       getViewport: () => viewport,
-      getToolMode: () => toolMode,
-      setToolMode,
+      getToolMode: () => currentToolMode,
       config: canvasConfig,
-    }), [viewport, toolMode, setToolMode, zoomIn, zoomOut, zoomTo, zoomToFit, centerCanvas, screenToCanvas, canvasToScreen, canvasConfig]);
+    }), [viewport, currentToolMode, zoomIn, zoomOut, zoomTo, zoomToFit, centerCanvas, screenToCanvas, canvasToScreen, canvasConfig]);
 
     return (
       <div

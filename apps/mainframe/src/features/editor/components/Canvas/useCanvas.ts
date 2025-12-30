@@ -15,7 +15,7 @@ export interface CanvasConfig {
   minScale?: number;
   scaleStep?: number;
   boundaryPadding?: number;
-  initialToolMode?: ToolMode;
+  toolMode: ToolMode;
   initialCenter?: boolean;
   onViewportChange?: () => void;
 }
@@ -38,14 +38,13 @@ export default function useCanvas(config: CanvasConfig) {
     maxScale = DEFAULT_CONFIG.maxScale,
     scaleStep = DEFAULT_CONFIG.scaleStep,
     boundaryPadding = DEFAULT_CONFIG.boundaryPadding,
-    initialToolMode = ToolMode.MOUSE,
+    toolMode,
     initialCenter = DEFAULT_CONFIG.initialCenter,
     onViewportChange,
   } = config;
 
   // State
   const [viewport, setViewport] = useState<ViewportState>({ x: 0, y: 0, scale: initialScale });
-  const [toolMode, setToolMode] = useState<ToolMode>(initialToolMode);
   const [isDragging, setIsDragging] = useState(false);
 
   // Refs
@@ -98,7 +97,6 @@ export default function useCanvas(config: CanvasConfig) {
 
   // 监听变化，触发回调
   useEffect(() => { onViewportChange?.(); }, [viewport, onViewportChange]);
-  useEffect(() => { onViewportChange?.(); }, [toolMode, onViewportChange]);
 
   // 缩放到指定比例（以视口中心为基准）
   const zoomTo = useCallback((newScale: number) => {
@@ -283,7 +281,6 @@ export default function useCanvas(config: CanvasConfig) {
     toolMode,
     isDragging,
     containerRef,
-    setToolMode,
     zoomIn,
     zoomOut,
     zoomTo,
