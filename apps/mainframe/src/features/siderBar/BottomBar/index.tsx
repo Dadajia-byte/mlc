@@ -13,7 +13,7 @@ const selectionList = [
   { value: 3, text: 'iPhone XR' },
 ]
 const BottomBar = () => {
-  const [linkStatus, setLinkStatus] = useState<typeof linkStatusList[number]>(linkStatusList[0]);
+  const [linkStatus] = useState<typeof linkStatusList[number]>(linkStatusList[0]);
   return (
     <div className="bottom-bar">
       <div className='bottom-bar-link'>

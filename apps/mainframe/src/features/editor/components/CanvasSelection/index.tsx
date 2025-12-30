@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ComponentSchema, ToolMode } from '@/types/schema';
+import { ToolMode } from '@/types/schema';
 import './index.scss';
 
 export interface SelectionBox {
@@ -12,8 +12,6 @@ export interface SelectionBox {
 export interface CanvasSelectionProps {
   /** 屏幕坐标转画布坐标的函数 */
   screenToCanvas: (screenX: number, screenY: number) => { x: number; y: number };
-  /** 组件列表 */
-  components: ComponentSchema[];
   /** 画布容器引用，用于判断点击是否在画布上 */
   canvasContainerRef: React.RefObject<HTMLElement>;
   /** 工具模式 */
@@ -22,7 +20,6 @@ export interface CanvasSelectionProps {
 
 const CanvasSelection: React.FC<CanvasSelectionProps> = ({
   screenToCanvas,
-  components,
   canvasContainerRef,
   toolMode,
 }) => {

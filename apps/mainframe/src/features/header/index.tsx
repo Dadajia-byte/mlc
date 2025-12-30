@@ -1,6 +1,7 @@
 import styles from './index.module.scss';
-import avator from '../../assets/temp/avator.png';
 import { Menu, Operation } from './components';
+
+const avator = new URL('../../assets/temp/avator.png', import.meta.url).href;
 
 const Header = () => {
   return (

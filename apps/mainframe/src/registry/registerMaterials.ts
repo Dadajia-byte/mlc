@@ -8,7 +8,7 @@ import {
   FloatButton,
 } from 'antd';
 
-const { Text, Title, Paragraph } = Typography;
+const { Text } = Typography;
 
 /**
  * 注册 Ant Design 组件
