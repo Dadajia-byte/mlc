@@ -9,7 +9,12 @@ export interface UseDragOptions {
   initialPosition?: DragPosition;
   enabled?: boolean;
   scale?: number;
-  containerRef?: React.RefObject<HTMLElement>;
+  bounds?: {
+    minX?: number;
+    minY?: number;
+    maxX?: number;
+    maxY?: number;
+  };
   onDragStart?: (position: DragPosition) => void;
   onDrag?: (position: DragPosition, delta: DragPosition) => void;
   onDragEnd?: (position: DragPosition) => void;
@@ -19,6 +24,8 @@ export default function useDrag(options: UseDragOptions = {}) {
   const {
     initialPosition = { x: 0, y: 0 },
     enabled = true,
+    scale = 1,
+    bounds,
     onDragStart,
     onDrag,
     onDragEnd,
@@ -27,7 +34,28 @@ export default function useDrag(options: UseDragOptions = {}) {
   const [position, setPosition] = useState<DragPosition>(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartPos = useRef<DragPosition>({ x: 0, y: 0 });
-  const elementRef = useRef<HTMLElement>(null);
+  const positionRef = useRef<DragPosition>(position);
+
+  // 限制位置在边界内
+  const clampPosition = useCallback((pos: DragPosition): DragPosition => {
+    if (!bounds) return pos;
+    return {
+      x: Math.max(bounds.minX ?? -Infinity, Math.min(bounds.maxX ?? Infinity, pos.x)),
+      y: Math.max(bounds.minY ?? -Infinity, Math.min(bounds.maxY ?? Infinity, pos.y)),
+    };
+  }, [bounds]);
+
+  // 同步 position 到 ref
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+
+  // 当 initialPosition 变化且未在拖拽时，同步位置
+  useEffect(() => {
+    if (!isDragging) {
+      setPosition(initialPosition);
+    }
+  }, [initialPosition.x, initialPosition.y, isDragging]);
 
   // 处理鼠标按下
   const handleMouseDown = useCallback(
@@ -36,14 +64,11 @@ export default function useDrag(options: UseDragOptions = {}) {
       e.preventDefault();
       e.stopPropagation();
 
-      const startX = e.clientX - position.x;
-      const startY = e.clientY - position.y;
-
-      dragStartPos.current = { x: startX, y: startY };
+      dragStartPos.current = { x: e.clientX, y: e.clientY };
       setIsDragging(true);
-      onDragStart?.(position);
+      onDragStart?.(positionRef.current);
     },
-    [enabled, position, onDragStart]
+    [enabled, onDragStart]
   );
 
   // 处理鼠标移动
@@ -51,21 +76,27 @@ export default function useDrag(options: UseDragOptions = {}) {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const newX = e.clientX - dragStartPos.current.x;
-      const newY = e.clientY - dragStartPos.current.y;
+      const deltaX = (e.clientX - dragStartPos.current.x) / scale;
+      const deltaY = (e.clientY - dragStartPos.current.y) / scale;
+
+      const rawPos = {
+        x: initialPosition.x + deltaX,
+        y: initialPosition.y + deltaY,
+      };
+      const clampedPos = clampPosition(rawPos);
 
       const delta = {
-        x: newX - position.x,
-        y: newY - position.y,
+        x: clampedPos.x - positionRef.current.x,
+        y: clampedPos.y - positionRef.current.y,
       };
 
-      setPosition({ x: newX, y: newY });
-      onDrag?.({ x: newX, y: newY }, delta);
+      setPosition(clampedPos);
+      onDrag?.(clampedPos, delta);
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      onDragEnd?.(position);
+      onDragEnd?.(positionRef.current);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -75,13 +106,12 @@ export default function useDrag(options: UseDragOptions = {}) {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, position, onDrag, onDragEnd]);
+  }, [isDragging, scale, initialPosition.x, initialPosition.y, clampPosition, onDrag, onDragEnd]);
 
   return {
     position,
     isDragging,
     dragProps: {
-      ref: elementRef,
       onMouseDown: handleMouseDown,
       style: {
         position: 'absolute' as const,

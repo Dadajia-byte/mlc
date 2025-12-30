@@ -36,13 +36,19 @@ const CanvasSelection: React.FC<CanvasSelectionProps> = ({
     
     if (!container || toolMode !== ToolMode.MOUSE) return;
 
-    // 只在点击画布空白区域时启动框选
-    if (e.target !== container && (e.target as HTMLElement).closest('.canvas') !== container) {
+    // 只响应左键
+    if (e.button !== 0) return;
+
+    // 如果点击的是组件，不启动框选（让组件自己处理拖拽）
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-component-id]')) {
       return;
     }
 
-    // 只响应左键
-    if (e.button !== 0) return;
+    // 只在点击画布空白区域时启动框选
+    if (target !== container && !container.contains(target)) {
+      return;
+    }
 
     const { x, y } = screenToCanvas(e.clientX, e.clientY);
 
@@ -52,7 +58,7 @@ const CanvasSelection: React.FC<CanvasSelectionProps> = ({
 
     e.preventDefault();
     e.stopPropagation();
-  }, [toolMode, screenToCanvas, canvasContainerRef]);
+  }, [toolMode, screenToCanvas, container]);
 
   // 处理鼠标移动
   const handleMouseMove = useCallback(

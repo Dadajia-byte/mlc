@@ -1,83 +1,61 @@
-import { useState, useEffect } from 'react';
-import './index.scss';
+import { useState, useEffect, useMemo } from 'react';
 import { InputNumber } from 'antd';
 import { ToolMode } from '@/types/schema';
+import type { CanvasRef } from '../Canvas';
+import './index.scss';
 
 interface ToolbarProps {
+  canvasRef: React.RefObject<CanvasRef>;
   scale: number;
-  minScale: number;
-  maxScale: number;
-  onScaleChange: (scale: number) => void;
-  zoom: {
-    zoomIn: () => void;
-    zoomOut: () => void;
-    zoomToFit: () => void;
-  }
   toolMode: ToolMode;
-  toolModeChange: (toolMode: ToolMode) => void;
 }
 
-const Toolbar = ({ scale, minScale, maxScale, zoom, onScaleChange, toolMode, toolModeChange }: ToolbarProps) => {
+const Toolbar = ({ canvasRef, scale, toolMode }: ToolbarProps) => {
   const [showMore, setShowMore] = useState(true);
-  const [activeItem, setActiveItem] = useState<ToolMode>(toolMode);
   const [currentScale, setCurrentScale] = useState(scale);
-  const { zoomIn, zoomOut, zoomToFit } = zoom;
+
+  const { minScale, maxScale } = canvasRef.current?.config ?? { minScale: 0.2, maxScale: 3 };
 
   useEffect(() => {
     setCurrentScale(scale);
   }, [scale]);
 
-
   const handleScaleChange = (value: number | null) => {
     if (value === null) return;
-    // 限制在最小和最大范围内
     const clampedValue = Math.max(minScale, Math.min(maxScale, value / 100));
     setCurrentScale(clampedValue);
-    onScaleChange?.(clampedValue);
+    canvasRef.current?.zoomTo(clampedValue);
   };
 
-  const formatScale = (value: number) => {
-    return Math.round(value * 100);
-  };
+  const formatScale = (value: number) => Math.round(value * 100);
 
-  const [toolbarItems] = useState([
+  const toolbarItems = useMemo(() => [
     {
       icon: 'icon-shouhuajiantou',
-      key: 'hand',
+      key: ToolMode.HAND,
       tooltip: '抓手',
-      onClick: () => {
-        setActiveItem('hand');
-        toolModeChange(ToolMode.HAND);
-      },
+      onClick: () => canvasRef.current?.setToolMode(ToolMode.HAND),
     },
     {
       icon: 'icon-shubiaojiantou',
-      key: 'mouse',
+      key: ToolMode.MOUSE,
       tooltip: '鼠标',
-      onClick: () => {
-        setActiveItem('mouse');
-        toolModeChange(ToolMode.MOUSE);
-      },
+      onClick: () => canvasRef.current?.setToolMode(ToolMode.MOUSE),
     },
     {
       icon: 'icon-shiyingpingmu',
       key: 'fit-screen',
       tooltip: '适应屏幕',
-      onClick: () => {
-        setActiveItem(null);
-        zoomToFit?.();
-      },
+      onClick: () => canvasRef.current?.zoomToFit(),
     },
     {
       icon: 'icon-quark-yi-bi-yi',
       key: 'original-size',
       tooltip: '原始尺寸',
-      onClick: () => {
-        setActiveItem(null);
-        onScaleChange?.(1);
-      },
-    }
-  ]);
+      onClick: () => canvasRef.current?.zoomTo(1),
+    },
+  ], [canvasRef]);
+
   return (
     <div className="toolbar">
       <div className="toolbar-left">
@@ -85,21 +63,21 @@ const Toolbar = ({ scale, minScale, maxScale, zoom, onScaleChange, toolMode, too
           <div className="toolbar-left-items">
             {toolbarItems.map((item) => (
               <div
-                className={`toolbar-left-items-item${activeItem === item.key ? ' active' : ''}`}
+                className={`toolbar-left-items-item${toolMode === item.key ? ' active' : ''}`}
                 key={item.key}
                 onClick={item.onClick}
                 title={item.tooltip}
               >
-                {item.icon ? <i className={`iconfont ${item.icon}`}></i> : null}
+                {item.icon && <i className={`iconfont ${item.icon}`} />}
               </div>
             ))}
           </div>
         )}
         <div className="toolbar-left-scale-btn">
           <InputNumber
-            className='toolbar-left-scale-btn-input'
-            mode='spinner'
-            size='small'
+            className="toolbar-left-scale-btn-input"
+            mode="spinner"
+            size="small"
             value={formatScale(currentScale)}
             onChange={handleScaleChange}
             formatter={(value) => `${value}%`}
@@ -110,17 +88,17 @@ const Toolbar = ({ scale, minScale, maxScale, zoom, onScaleChange, toolMode, too
             precision={0}
             onStep={(_value, info) => {
               if (info.type === 'up') {
-                zoomIn?.();
-              } else if (info.type === 'down') {
-                zoomOut?.();
+                canvasRef.current?.zoomIn();
+              } else {
+                canvasRef.current?.zoomOut();
               }
             }}
           />
         </div>
       </div>
-      
+
       <div className="toolbar-more" onClick={() => setShowMore(!showMore)}>
-        <i className={`iconfont ${showMore ? 'icon-xiangyouzhankai' : 'icon-xiangzuoshouqi'}`}></i>
+        <i className={`iconfont ${showMore ? 'icon-xiangyouzhankai' : 'icon-xiangzuoshouqi'}`} />
       </div>
     </div>
   );

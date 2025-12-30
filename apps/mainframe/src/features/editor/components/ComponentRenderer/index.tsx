@@ -1,35 +1,32 @@
-// apps/mainframe/src/components/RenderEngine/index.tsx
 import React, { useMemo, useCallback } from 'react';
 import { ComponentSchema } from '@/types/schema';
 import { getComponent, ComponentLibrary } from '@/registry/index';
-import useDrag from '@/hooks/canvas/useDrag';
 import useCanvasStore from '@/store/canvasStore';
+import useDrag from './useDrag';
 import './index.scss';
 
-interface RenderEngineProps {
+interface ComponentRendererProps {
   schema: ComponentSchema;
-  mode?: 'edit' | 'preview'; // 编辑模式 or 预览模式
-  onSelect?: (id: string) => void; // 选中组件回调
-  onUpdate?: (id: string, updates: Partial<ComponentSchema>) => void; // 更新组件回调
-  containerRef?: React.RefObject<HTMLElement>;
+  mode?: 'edit' | 'preview';
+  onSelect?: (id: string) => void;
+  onUpdate?: (id: string, updates: Partial<ComponentSchema>) => void;
   scale?: number;
+  canvasSize?: { width: number; height: number };
 }
 
-// 单个组件渲染器
 const ComponentRenderer = React.memo(({
   schema,
   mode = 'edit',
   onSelect,
   onUpdate,
-  containerRef,
   scale = 1,
-}: RenderEngineProps) => {
+  canvasSize,
+}: ComponentRendererProps) => {
   const { selectedComponents } = useCanvasStore();
   const isEditMode = mode === 'edit';
   const isSelected = selectedComponents.includes(schema.id);
-  // 确定组件库（优先使用 schema 中的，否则使用默认的 'antd'）
   const library: ComponentLibrary = schema.library || 'antd';
-  // 获取组件信息
+
   const componentInfo = getComponent(library, schema.type);
   if (!componentInfo) {
     console.warn(`Component ${schema.type} not found in library ${library}`);
@@ -39,8 +36,23 @@ const ComponentRenderer = React.memo(({
       </div>
     );
   }
+
   const { component: Component, meta } = componentInfo;
-  // 拖拽功能（仅在编辑模式且未锁定时）
+
+  // 计算边界限制
+  const bounds = useMemo(() => {
+    if (!canvasSize) return undefined;
+    const componentWidth = (schema.style?.width as number) || 100;
+    const componentHeight = (schema.style?.height as number) || 40;
+    return {
+      minX: 0,
+      minY: 0,
+      maxX: canvasSize.width - componentWidth,
+      maxY: canvasSize.height - componentHeight,
+    };
+  }, [canvasSize, schema.style?.width, schema.style?.height]);
+
+  // 拖拽功能
   const { dragProps } = useDrag({
     initialPosition: {
       x: schema.style?.left || 0,
@@ -48,25 +60,21 @@ const ComponentRenderer = React.memo(({
     },
     enabled: isEditMode && !schema.editor?.locked,
     scale,
-    containerRef,
+    bounds,
     onDragEnd: (position) => {
       onUpdate?.(schema.id, {
-        style: {
-          ...schema.style,
-          left: position.x,
-          top: position.y,
-        },
+        style: { ...schema.style, left: position.x, top: position.y },
       });
     },
   });
-  // 处理点击选中
+
   const handleClick = useCallback((e: React.MouseEvent) => {
     if (isEditMode) {
       e.stopPropagation();
       onSelect?.(schema.id);
     }
   }, [isEditMode, schema.id, onSelect]);
-  // 合并样式
+
   const mergedStyle = useMemo(() => {
     const baseStyle = schema.style || {};
     const dragStyle = isEditMode ? dragProps.style : {};
@@ -74,23 +82,17 @@ const ComponentRenderer = React.memo(({
       ...baseStyle,
       ...dragStyle,
       opacity: schema.editor?.visible === false ? 0.5 : 1,
-      pointerEvents: schema.editor?.locked ? 'none' : 'auto',
+      pointerEvents: (schema.editor?.locked ? 'none' : 'auto') as React.CSSProperties['pointerEvents'],
       zIndex: isSelected ? (baseStyle.zIndex || 0) + 1000 : baseStyle.zIndex,
     };
   }, [schema.style, schema.editor, isEditMode, isSelected, dragProps.style]);
 
-  // 合并属性 并分离 children（使用默认属性 + schema 属性）
-  const { children: propsChildren, ...restProps } = useMemo(() => {
-    return {
-      ...meta.defaultProps,
-      ...schema.props,
-    };
-  }, [meta.defaultProps, schema.props]);
+  const { children: propsChildren, ...restProps } = useMemo(() => ({
+    ...meta.defaultProps,
+    ...schema.props,
+  }), [meta.defaultProps, schema.props]);
 
-  // 决定使用哪个 children
-  // 优先使用 schema.children（子组件 Schema），如果没有则使用 props.children（文本内容）
   const renderChildren = useMemo(() => {
-    // 如果有子组件 Schema，渲染子组件
     if (schema.children && schema.children.length > 0) {
       return schema.children.map((child) => (
         <ComponentRenderer
@@ -99,18 +101,17 @@ const ComponentRenderer = React.memo(({
           mode={mode}
           onSelect={onSelect}
           onUpdate={onUpdate}
-          containerRef={containerRef}
           scale={scale}
+          canvasSize={canvasSize}
         />
       ));
     }
-    // 否则使用 props 中的 children（文本内容）
     return propsChildren;
-  }, [schema.children, propsChildren, mode, onSelect, onUpdate, containerRef, scale]);
+  }, [schema.children, propsChildren, mode, onSelect, onUpdate, scale, canvasSize]);
 
   return (
     <div
-      {...(isEditMode ? { ...dragProps, onMouseDown: dragProps.onMouseDown } : {})}
+      onMouseDown={isEditMode ? dragProps.onMouseDown : undefined}
       onClick={handleClick}
       style={mergedStyle}
       className={`component-wrapper ${isSelected ? 'selected' : ''} ${schema.editor?.locked ? 'locked' : ''}`}
@@ -123,13 +124,13 @@ const ComponentRenderer = React.memo(({
       </Component>
     </div>
   );
-}, (prevProps, nextProps) => {
-  return (
-    prevProps.schema.id === nextProps.schema.id &&
-    prevProps.schema === nextProps.schema &&
-    prevProps.mode === nextProps.mode
-  );
-});
+}, (prevProps, nextProps) => (
+  prevProps.schema.id === nextProps.schema.id &&
+  prevProps.schema === nextProps.schema &&
+  prevProps.mode === nextProps.mode &&
+  prevProps.scale === nextProps.scale &&
+  prevProps.canvasSize === nextProps.canvasSize
+));
 
 ComponentRenderer.displayName = 'ComponentRenderer';
 
