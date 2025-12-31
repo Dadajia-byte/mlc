@@ -32,39 +32,71 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
 
   const toolbarItems = useMemo(() => [
     {
+      icon: 'icon-',
+      key: 'undo',
+      tooltip: '撤销',
+      onClick: () => console.log('undo'),
+      position: 'left'
+    },
+    {
+      icon: 'icon-',
+      key: 'redo',
+      tooltip: '重做',
+      onClick: () => console.log('redo'),
+      position: 'left'
+    },
+    {
       icon: 'icon-zhuashou',
       key: ToolMode.HAND,
       tooltip: '抓手',
       onClick: () => setToolMode(ToolMode.HAND),
+      position: 'right',
     },
     {
       icon: 'icon-shubiaojiantou',
       key: ToolMode.MOUSE,
       tooltip: '鼠标',
       onClick: () => setToolMode(ToolMode.MOUSE),
+      position: 'right',
     },
     {
       icon: 'icon-shiyingpingmu',
       key: 'fit-screen',
       tooltip: '适应屏幕',
       onClick: () => canvasRef.current?.zoomToFit(),
+      position: 'right',
     },
     {
       icon: 'icon-quark-yi-bi-yi',
       key: 'original-size',
       tooltip: '原始尺寸',
       onClick: () => canvasRef.current?.zoomTo(1),
+      position: 'right',
     },
   ], [canvasRef, setToolMode]);
 
   return (
     <div className="toolbar">
-      <div className="toolbar-left">
+      <div className='toolbar-left'>
+        <div className='toolbar-left-items'>
+          {toolbarItems.filter((item) => item.position === 'left').map((item) => (
+            <div
+              className={`toolbar-left-items-item`}
+              key={item.key}
+              onClick={item.onClick}
+              title={item.tooltip}
+            >
+              {item.icon && <i className={`iconfont ${item.icon}`} />}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="toolbar-right">
         {showMore && (
-          <div className="toolbar-left-items">
-            {toolbarItems.map((item) => (
+          <div className="toolbar-right-items">
+            {toolbarItems.filter((item) => item.position === 'right').map((item) => (
               <div
-                className={`toolbar-left-items-item${toolMode === item.key ? ' active' : ''}`}
+                className={`toolbar-right-items-item${toolMode === item.key ? ' active' : ''}`}
                 key={item.key}
                 onClick={item.onClick}
                 title={item.tooltip}
@@ -74,9 +106,9 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
             ))}
           </div>
         )}
-        <div className="toolbar-left-scale-btn">
+        <div className="toolbar-right-scale-btn">
           <InputNumber
-            className="toolbar-left-scale-btn-input"
+            className="toolbar-right-scale-btn-input"
             mode="spinner"
             size="small"
             value={formatScale(currentScale)}

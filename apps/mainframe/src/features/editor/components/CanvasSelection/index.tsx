@@ -1,124 +1,92 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ToolMode } from '@/types/schema';
+import { Rect, getComponentsInRect } from '@/utils/geometry';
+import useCanvasStore from '@/store/canvasStore';
 import './index.scss';
 
-export interface SelectionBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+interface CanvasSelectionProps {
+  screenToCanvas: (screenX: number, screenY: number) => { x: number; y: number };
+  canvasContainerRef: React.RefObject<HTMLElement>;
+  toolMode: ToolMode;
+  scale: number;
 }
 
-export interface CanvasSelectionProps {
-  /** 屏幕坐标转画布坐标的函数 */
-  screenToCanvas: (screenX: number, screenY: number) => { x: number; y: number };
-  /** 画布容器引用，用于判断点击是否在画布上 */
-  canvasContainerRef: React.RefObject<HTMLElement>;
-  /** 工具模式 */
-  toolMode: ToolMode;
-}
+let justFinishedSelection = false;
 
 const CanvasSelection: React.FC<CanvasSelectionProps> = ({
   screenToCanvas,
   canvasContainerRef,
   toolMode,
+  scale,
 }) => {
-  const [isSelecting, setIsSelecting] = useState(false);
-  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
-  const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
+  const [selectionBox, setSelectionBox] = useState<Rect | null>(null);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const boxRef = useRef<Rect | null>(null);
+  const scaleRef = useRef(scale);
 
-  const container = canvasContainerRef.current;
-  // 处理鼠标按下
-  const handleMouseDown = useCallback((e: MouseEvent) => {
-    
-    if (!container || toolMode !== ToolMode.MOUSE) return;
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
+  useEffect(() => { boxRef.current = selectionBox; }, [selectionBox]);
 
-    // 只响应左键
-    if (e.button !== 0) return;
+  const finishSelection = useCallback(() => {
+    const box = boxRef.current;
+    const canvas = useCanvasStore.getState().canvas;
 
-    // 如果点击的是组件，不启动框选（让组件自己处理拖拽）
-    const target = e.target as HTMLElement;
-    if (target.closest('[data-component-id]')) {
-      return;
+    if (box && canvas) {
+      const ids = getComponentsInRect(canvas.components, box, scaleRef.current);
+      if (ids.length > 0) {
+        useCanvasStore.getState().setSelectedComponents(ids);
+        justFinishedSelection = true;
+        setTimeout(() => { justFinishedSelection = false; }, 0);
+      } else {
+        useCanvasStore.getState().selectComponent(null);
+      }
     }
 
-    // 如果点击的是多选包围框，不启动框选
-    if (target.closest('.selection-bounds')) {
-      return;
-    }
-
-    // 只在点击画布空白区域时启动框选
-    if (target !== container && !container.contains(target)) {
-      return;
-    }
-
-    const { x, y } = screenToCanvas(e.clientX, e.clientY);
-
-    setIsSelecting(true);
-    setSelectionStart({ x, y });
+    startRef.current = null;
     setSelectionBox(null);
+  }, []);
 
-    e.preventDefault();
-    e.stopPropagation();
-  }, [toolMode, screenToCanvas, container]);
-
-  // 处理鼠标移动
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isSelecting || !selectionStart) return;
-
-      const { x, y } = screenToCanvas(e.clientX, e.clientY);
-
-      const left = Math.min(selectionStart.x, x);
-      const top = Math.min(selectionStart.y, y);
-      const width = Math.abs(x - selectionStart.x);
-      const height = Math.abs(y - selectionStart.y);
-
-      setSelectionBox({ x: left, y: top, width, height });
-    },
-    [isSelecting, selectionStart, screenToCanvas]
-  );
-
-  // 处理鼠标抬起
-  const handleMouseUp = useCallback(() => {
-    if (!isSelecting) return;
-    setIsSelecting(false);
-    setSelectionStart(null);
-    setSelectionBox(null);
-  }, [isSelecting]);
-
-  // 监听全局鼠标抬起（防止鼠标移出画布后无法结束框选）
   useEffect(() => {
-    if (!isSelecting) return;
-
-    const handleGlobalMouseUp = () => {
-      setIsSelecting(false);
-      setSelectionStart(null);
-      setSelectionBox(null);
-    };
-
-    document.addEventListener('mouseup', handleGlobalMouseUp);
-    return () => {
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
-    };
-  }, [isSelecting]);
-
-  // 绑定事件监听器
-  useEffect(() => {
+    const container = canvasContainerRef.current;
     if (toolMode !== ToolMode.MOUSE || !container) return;
 
-    container.addEventListener('mousedown', handleMouseDown);
-    container.addEventListener('mousemove', handleMouseMove);
-    container.addEventListener('mouseup', handleMouseUp);
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-component-id]') || target.closest('.selection-bounds')) return;
+      if (target !== container && !container.contains(target)) return;
+
+      startRef.current = screenToCanvas(e.clientX, e.clientY);
+      setSelectionBox(null);
+      e.preventDefault();
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!startRef.current) return;
+      const { x, y } = screenToCanvas(e.clientX, e.clientY);
+      setSelectionBox({
+        x: Math.min(startRef.current.x, x),
+        y: Math.min(startRef.current.y, y),
+        width: Math.abs(x - startRef.current.x),
+        height: Math.abs(y - startRef.current.y),
+      });
+    };
+
+    const onMouseUp = () => {
+      if (startRef.current) finishSelection();
+    };
+
+    container.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
 
     return () => {
-      container.removeEventListener('mousedown', handleMouseDown);
-      container.removeEventListener('mousemove', handleMouseMove);
-      container.removeEventListener('mouseup', handleMouseUp);
+      container.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
     };
-  }, [toolMode, canvasContainerRef, handleMouseDown, handleMouseMove, handleMouseUp]);
+  }, [toolMode, canvasContainerRef, screenToCanvas, finishSelection]);
 
-  // 如果没有选框，不渲染
   if (!selectionBox) return null;
 
   return (
@@ -135,5 +103,7 @@ const CanvasSelection: React.FC<CanvasSelectionProps> = ({
     />
   );
 };
+
+export const isJustFinishedSelection = () => justFinishedSelection;
 
 export default CanvasSelection;

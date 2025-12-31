@@ -1,205 +1,71 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { ToolMode } from '@/types/schema';
+import useViewport, { ViewportConfig } from './useViewport';
+import useZoom from './useZoom';
 
-export interface ViewportState {
-  x: number;
-  y: number;
-  scale: number;
-}
-
-export interface CanvasConfig {
-  canvasWidth: number;
-  canvasHeight: number;
-  initialScale?: number;
-  maxScale?: number;
-  minScale?: number;
+export interface CanvasConfig extends ViewportConfig {
   scaleStep?: number;
-  boundaryPadding?: number;
   toolMode: ToolMode;
   initialCenter?: boolean;
   onViewportChange?: () => void;
 }
 
-const DEFAULT_CONFIG = {
-  initialScale: 1,
-  minScale: 0.2,
-  maxScale: 3,
-  scaleStep: 0.1,
-  boundaryPadding: 0.1,
-  initialCenter: true,
-};
+const DEFAULT_SCALE_STEP = 0.1;
 
 export default function useCanvas(config: CanvasConfig) {
   const {
-    canvasWidth,
-    canvasHeight,
-    initialScale = DEFAULT_CONFIG.initialScale,
-    minScale = DEFAULT_CONFIG.minScale,
-    maxScale = DEFAULT_CONFIG.maxScale,
-    scaleStep = DEFAULT_CONFIG.scaleStep,
-    boundaryPadding = DEFAULT_CONFIG.boundaryPadding,
+    scaleStep = DEFAULT_SCALE_STEP,
     toolMode,
-    initialCenter = DEFAULT_CONFIG.initialCenter,
+    initialCenter = true,
     onViewportChange,
+    ...viewportConfig
   } = config;
 
-  // State
-  const [viewport, setViewport] = useState<ViewportState>({ x: 0, y: 0, scale: initialScale });
-  const [isDragging, setIsDragging] = useState(false);
+  const {
+    viewport,
+    viewportRef,
+    containerRef,
+    getContainerSize,
+    updateViewport,
+    screenToCanvas,
+    canvasToScreen,
+    config: vpConfig,
+  } = useViewport(viewportConfig);
 
-  // Refs
-  const containerRef = useRef<HTMLDivElement>(null);
-  const viewportRef = useRef<ViewportState>(viewport);
+  const { zoomTo, zoomIn, zoomOut, zoomToFit, centerCanvas } = useZoom(
+    { ...vpConfig, scaleStep },
+    { viewportRef, getContainerSize, updateViewport }
+  );
+
+  const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const hasInitializedRef = useRef(false);
 
-  // 同步 viewport 到 ref
-  useEffect(() => {
-    viewportRef.current = viewport;
-  }, [viewport]);
-
-  // 获取容器尺寸
-  const getContainerSize = useCallback(() => {
-    if (!containerRef.current) return { width: 0, height: 0 };
-    return {
-      width: containerRef.current.clientWidth,
-      height: containerRef.current.clientHeight,
-    };
-  }, []);
-
-  // 限制视口位置
-  const clampPosition = useCallback((x: number, y: number, scale: number) => {
-    const { width: containerWidth, height: containerHeight } = getContainerSize();
-    if (!containerWidth || !containerHeight || !canvasWidth || !canvasHeight) {
-      return { x, y };
-    }
-
-    const scaledCanvasWidth = canvasWidth * scale;
-    const scaledCanvasHeight = canvasHeight * scale;
-    const minVisibleWidth = Math.min(scaledCanvasWidth * boundaryPadding, containerWidth * 0.5);
-    const minVisibleHeight = Math.min(scaledCanvasHeight * boundaryPadding, containerHeight * 0.5);
-
-    return {
-      x: Math.max(minVisibleWidth - scaledCanvasWidth, Math.min(containerWidth - minVisibleWidth, x)),
-      y: Math.max(minVisibleHeight - scaledCanvasHeight, Math.min(containerHeight - minVisibleHeight, y)),
-    };
-  }, [canvasWidth, canvasHeight, boundaryPadding, getContainerSize]);
-
-  // 更新视口（带边界限制）
-  const updateViewport = useCallback((newState: Partial<ViewportState>) => {
-    setViewport((prev) => {
-      const next = { ...prev, ...newState };
-      const scale = Math.max(minScale, Math.min(maxScale, next.scale));
-      const { x, y } = clampPosition(next.x, next.y, scale);
-      return { x, y, scale };
-    });
-  }, [minScale, maxScale, clampPosition]);
-
-  // 监听变化，触发回调
   useEffect(() => { onViewportChange?.(); }, [viewport, onViewportChange]);
 
-  // 缩放到指定比例（以视口中心为基准）
-  const zoomTo = useCallback((newScale: number) => {
-    const { width: containerWidth, height: containerHeight } = getContainerSize();
-    if (!containerWidth || !containerHeight) {
-      updateViewport({ scale: newScale });
-      return;
-    }
-
-    const current = viewportRef.current;
-    const centerX = (containerWidth / 2 - current.x) / current.scale;
-    const centerY = (containerHeight / 2 - current.y) / current.scale;
-
-    updateViewport({
-      x: containerWidth / 2 - centerX * newScale,
-      y: containerHeight / 2 - centerY * newScale,
-      scale: newScale,
-    });
-  }, [getContainerSize, updateViewport]);
-
-  const zoomIn = useCallback(() => {
-    zoomTo(Math.min(maxScale, viewportRef.current.scale + scaleStep));
-  }, [maxScale, scaleStep, zoomTo]);
-
-  const zoomOut = useCallback(() => {
-    zoomTo(Math.max(minScale, viewportRef.current.scale - scaleStep));
-  }, [minScale, scaleStep, zoomTo]);
-
-  const zoomToFit = useCallback(() => {
-    const { width: containerWidth, height: containerHeight } = getContainerSize();
-    if (!containerWidth || !containerHeight || !canvasWidth || !canvasHeight) return;
-
-    const newScale = Math.min(containerWidth / canvasWidth, containerHeight / canvasHeight, 1);
-    const scaledWidth = canvasWidth * newScale;
-    const scaledHeight = canvasHeight * newScale;
-
-    updateViewport({
-      x: (containerWidth - scaledWidth) / 2,
-      y: (containerHeight - scaledHeight) / 2,
-      scale: newScale,
-    });
-  }, [canvasWidth, canvasHeight, getContainerSize, updateViewport]);
-
-  const centerCanvas = useCallback(() => {
-    const { width: containerWidth, height: containerHeight } = getContainerSize();
-    if (!containerWidth || !containerHeight || !canvasWidth || !canvasHeight) return;
-
-    const current = viewportRef.current;
-    updateViewport({
-      x: (containerWidth - canvasWidth * current.scale) / 2,
-      y: (containerHeight - canvasHeight * current.scale) / 2,
-    });
-  }, [canvasWidth, canvasHeight, getContainerSize, updateViewport]);
-
-  // 坐标转换（屏幕转画布）
-  const screenToCanvas = useCallback((screenX: number, screenY: number) => {
-    if (!containerRef.current) return { x: 0, y: 0 };
-    const rect = containerRef.current.getBoundingClientRect();
-    const current = viewportRef.current;
-    return {
-      x: (screenX - rect.left - current.x) / current.scale,
-      y: (screenY - rect.top - current.y) / current.scale,
-    };
-  }, []);
-
-  // 坐标转换（画布转屏幕）
-  const canvasToScreen = useCallback((canvasX: number, canvasY: number) => {
-    if (!containerRef.current) return { x: 0, y: 0 };
-    const rect = containerRef.current.getBoundingClientRect();
-    const current = viewportRef.current;
-    return {
-      x: canvasX * current.scale + current.x + rect.left,
-      y: canvasY * current.scale + current.y + rect.top,
-    };
-  }, []);
-
-  // 鼠标按下（拖拽画布）
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    const isHandMode = toolMode === ToolMode.HAND;
-    const isMiddleButton = e.button === 1;
-    const isLeftButton = e.button === 0;
-    const isClickOnViewport = e.target === e.currentTarget;
+    const isHand = toolMode === ToolMode.HAND;
+    const isMiddle = e.button === 1;
+    const isLeft = e.button === 0;
+    const isOnViewport = e.target === e.currentTarget;
 
-    if (isMiddleButton || (isHandMode && isLeftButton) || isClickOnViewport) {
+    if (isMiddle || (isHand && isLeft) || isOnViewport) {
       e.preventDefault();
       setIsDragging(true);
-
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const current = viewportRef.current;
-
+      const v = viewportRef.current;
       dragStartRef.current = {
-        x: e.clientX - rect.left - current.x,
-        y: e.clientY - rect.top - current.y,
+        x: e.clientX - rect.left - v.x,
+        y: e.clientY - rect.top - v.y,
       };
     }
-  }, [toolMode]);
+  }, [toolMode, containerRef, viewportRef]);
 
-  // 拖拽移动
   useEffect(() => {
     if (!isDragging) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const onMove = (e: MouseEvent) => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       updateViewport({
@@ -208,73 +74,57 @@ export default function useCanvas(config: CanvasConfig) {
       });
     };
 
-    const handleMouseUp = () => setIsDragging(false);
+    const onUp = () => setIsDragging(false);
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
     };
-  }, [isDragging, updateViewport]);
+  }, [isDragging, updateViewport, containerRef]);
 
-  // 滚轮缩放/平移
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const handleWheel = (e: WheelEvent) => {
+    const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      const v = viewportRef.current;
 
       if (e.ctrlKey || e.metaKey) {
         const rect = container.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        const current = viewportRef.current;
-
-        const canvasX = (mouseX - current.x) / current.scale;
-        const canvasY = (mouseY - current.y) / current.scale;
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const cx = (mx - v.x) / v.scale;
+        const cy = (my - v.y) / v.scale;
         const delta = e.deltaY > 0 ? 0.95 : 1.05;
-        const newScale = Math.max(minScale, Math.min(maxScale, current.scale * delta));
-
-        updateViewport({
-          x: mouseX - canvasX * newScale,
-          y: mouseY - canvasY * newScale,
-          scale: newScale,
-        });
+        const newScale = Math.max(vpConfig.minScale, Math.min(vpConfig.maxScale, v.scale * delta));
+        updateViewport({ x: mx - cx * newScale, y: my - cy * newScale, scale: newScale });
       } else {
-        const current = viewportRef.current;
-        updateViewport({
-          x: current.x - e.deltaX,
-          y: current.y - e.deltaY,
-        });
+        updateViewport({ x: v.x - e.deltaX, y: v.y - e.deltaY });
       }
     };
 
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, [minScale, maxScale, updateViewport]);
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, [vpConfig.minScale, vpConfig.maxScale, updateViewport, containerRef, viewportRef]);
 
-  // 初始化居中
   useEffect(() => {
     if (!initialCenter || hasInitializedRef.current || !containerRef.current) return;
 
-    const initCenter = () => {
-      const { width: containerWidth, height: containerHeight } = getContainerSize();
-      if (containerWidth > 0 && containerHeight > 0) {
-        const scaledWidth = canvasWidth * initialScale;
-        const scaledHeight = canvasHeight * initialScale;
-        updateViewport({
-          x: (containerWidth - scaledWidth) / 2,
-          y: (containerHeight - scaledHeight) / 2,
-          scale: initialScale,
-        });
+    const init = () => {
+      const { width: cw, height: ch } = getContainerSize();
+      if (cw > 0 && ch > 0) {
+        const sw = vpConfig.canvasWidth * vpConfig.initialScale;
+        const sh = vpConfig.canvasHeight * vpConfig.initialScale;
+        updateViewport({ x: (cw - sw) / 2, y: (ch - sh) / 2, scale: vpConfig.initialScale });
         hasInitializedRef.current = true;
       }
     };
 
-    requestAnimationFrame(() => requestAnimationFrame(initCenter));
-  }, [initialCenter, initialScale, canvasWidth, canvasHeight, getContainerSize, updateViewport]);
+    requestAnimationFrame(() => requestAnimationFrame(init));
+  }, [initialCenter, vpConfig, getContainerSize, updateViewport, containerRef]);
 
   return {
     viewport,
@@ -296,11 +146,11 @@ export default function useCanvas(config: CanvasConfig) {
       },
     },
     canvasStyle: {
-      width: canvasWidth,
-      height: canvasHeight,
+      width: vpConfig.canvasWidth,
+      height: vpConfig.canvasHeight,
       transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
       transformOrigin: 'top left',
     },
-    config: { minScale, maxScale, scaleStep },
+    config: { minScale: vpConfig.minScale, maxScale: vpConfig.maxScale, scaleStep },
   };
 }

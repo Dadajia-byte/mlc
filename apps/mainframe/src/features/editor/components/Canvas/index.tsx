@@ -1,5 +1,6 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
-import useCanvas, { CanvasConfig, ViewportState } from './useCanvas';
+import useCanvas, { CanvasConfig } from './useCanvas';
+import { ViewportState } from './useViewport';
 import { ToolMode } from '@/types/schema';
 import './index.scss';
 

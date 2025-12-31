@@ -4,6 +4,7 @@ import { generateId } from '@mlc/utils';
 import { getComponent } from '@/registry/index';
 import { ToolMode } from '@/types/schema';
 import { Canvas, CanvasRef, ComponentRenderer, Toolbar, CanvasSelection, SelectionBounds } from './components';
+import { isJustFinishedSelection } from './components/CanvasSelection';
 import './index.scss';
 
 const Editor = () => {
@@ -22,7 +23,7 @@ const Editor = () => {
   const [viewportState, setViewportState] = useState({ scale: 1 });
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
+    if (e.target === e.currentTarget && !isJustFinishedSelection()) {
       selectComponent(null);
     }
   }, [selectComponent]);
@@ -116,6 +117,7 @@ const Editor = () => {
             screenToCanvas={(x, y) => canvasRef.current?.screenToCanvas(x, y) ?? { x: 0, y: 0 }}
             canvasContainerRef={canvasContainerRef}
             toolMode={toolMode}
+            scale={viewportState.scale}
           />
           <SelectionBounds 
             components={canvas.components} 
