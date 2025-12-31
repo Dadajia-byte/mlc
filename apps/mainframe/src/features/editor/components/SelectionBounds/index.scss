@@ -1,0 +1,10 @@
+.selection-bounds {
+  border: 2px dashed #1890ff;
+  background-color: rgba(24, 144, 255, 0.05);
+  z-index: 2000;
+  user-select: none;
+
+  &.dragging {
+    background-color: rgba(24, 144, 255, 0.1);
+  }
+}

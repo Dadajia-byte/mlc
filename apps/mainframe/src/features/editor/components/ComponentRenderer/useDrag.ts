@@ -17,7 +17,7 @@ export interface UseDragOptions {
   };
   onDragStart?: (position: DragPosition) => void;
   onDrag?: (position: DragPosition, delta: DragPosition) => void;
-  onDragEnd?: (position: DragPosition) => void;
+  onDragEnd?: (position: DragPosition, delta?: DragPosition) => void;
 }
 
 export default function useDrag(options: UseDragOptions = {}) {
@@ -35,6 +35,7 @@ export default function useDrag(options: UseDragOptions = {}) {
   const [isDragging, setIsDragging] = useState(false);
   const dragStartPos = useRef<DragPosition>({ x: 0, y: 0 });
   const positionRef = useRef<DragPosition>(position);
+  const totalDeltaRef = useRef<DragPosition>({ x: 0, y: 0 });
 
   // 限制位置在边界内
   const clampPosition = useCallback((pos: DragPosition): DragPosition => {
@@ -65,6 +66,7 @@ export default function useDrag(options: UseDragOptions = {}) {
       e.stopPropagation();
 
       dragStartPos.current = { x: e.clientX, y: e.clientY };
+      totalDeltaRef.current = { x: 0, y: 0 };
       setIsDragging(true);
       onDragStart?.(positionRef.current);
     },
@@ -90,13 +92,19 @@ export default function useDrag(options: UseDragOptions = {}) {
         y: clampedPos.y - positionRef.current.y,
       };
 
+      // 累计总位移
+      totalDeltaRef.current = {
+        x: clampedPos.x - initialPosition.x,
+        y: clampedPos.y - initialPosition.y,
+      };
+
       setPosition(clampedPos);
       onDrag?.(clampedPos, delta);
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      onDragEnd?.(positionRef.current);
+      onDragEnd?.(positionRef.current, totalDeltaRef.current);
     };
 
     document.addEventListener('mousemove', handleMouseMove);

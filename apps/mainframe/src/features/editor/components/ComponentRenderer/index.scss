@@ -9,6 +9,12 @@
     outline-offset: 2px;
   }
 
+  // 多选时使用虚线边框
+  &.multi-selected {
+    outline: 1px dashed #1890ff !important;
+    outline-offset: 1px;
+  }
+
   &.locked {
     opacity: 0.6;
     cursor: not-allowed;

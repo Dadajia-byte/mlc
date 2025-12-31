@@ -42,6 +42,11 @@ const CanvasSelection: React.FC<CanvasSelectionProps> = ({
       return;
     }
 
+    // 如果点击的是多选包围框，不启动框选
+    if (target.closest('.selection-bounds')) {
+      return;
+    }
+
     // 只在点击画布空白区域时启动框选
     if (target !== container && !container.contains(target)) {
       return;

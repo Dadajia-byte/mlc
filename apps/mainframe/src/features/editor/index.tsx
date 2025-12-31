@@ -3,7 +3,7 @@ import useCanvasStore from '@/store/canvasStore';
 import { generateId } from '@mlc/utils';
 import { getComponent } from '@/registry/index';
 import { ToolMode } from '@/types/schema';
-import { Canvas, CanvasRef, ComponentRenderer, Toolbar, CanvasSelection } from './components';
+import { Canvas, CanvasRef, ComponentRenderer, Toolbar, CanvasSelection, SelectionBounds } from './components';
 import './index.scss';
 
 const Editor = () => {
@@ -27,7 +27,7 @@ const Editor = () => {
     }
   }, [selectComponent]);
 
-  const handleSelect = useCallback((id: string) => selectComponent(id), [selectComponent]);
+  const handleSelect = useCallback((id: string, multiSelect?: boolean) => selectComponent(id, multiSelect), [selectComponent]);
 
   const handleUpdate = useCallback(
     (id: string, updates: any) => updateComponent(id, updates),
@@ -116,6 +116,11 @@ const Editor = () => {
             screenToCanvas={(x, y) => canvasRef.current?.screenToCanvas(x, y) ?? { x: 0, y: 0 }}
             canvasContainerRef={canvasContainerRef}
             toolMode={toolMode}
+          />
+          <SelectionBounds 
+            components={canvas.components} 
+            scale={viewportState.scale}
+            canvasSize={{ width: canvas.width, height: canvas.height }}
           />
         </div>
       </Canvas>

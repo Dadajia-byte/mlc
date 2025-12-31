@@ -6,6 +6,7 @@ import { DEFAULT_CANVAS_SCHEMA } from '@/constants';
 interface CanvasStore {
   canvas: CanvasSchema | null;
   selectedComponents: string[]; // 选中的组件ID列表
+  dragOffset: { x: number; y: number } | null; // 多选拖动时的临时偏移
   history: CanvasSchema[]; // 历史记录
   historyIndex: number; // 历史记录索引
   toolMode: ToolMode; // 工具模式
@@ -23,13 +24,22 @@ interface CanvasStore {
    */
   updateComponent: (id: string, updates: Partial<ComponentSchema>) => void;
   /**
+   * 批量更新组件位置（用于多选拖动）
+   * @param clearDragOffset 是否同时清除拖动偏移（原子操作，避免闪烁）
+   */
+  updateComponentsPosition: (updates: { id: string; deltaX: number; deltaY: number }[], clearDragOffset?: boolean) => void;
+  /**
+   * 设置拖动偏移（用于多选拖动时的实时预览）
+   */
+  setDragOffset: (offset: { x: number; y: number } | null) => void;
+  /**
    * 删除组件
    */
   deleteComponent: (id: string) => void;
   /**
    * 选中组件
    */
-  selectComponent: (id: string | null) => void;
+  selectComponent: (id: string | null, multiSelect?: boolean) => void;
   /**
    * 撤销
    */
@@ -45,6 +55,7 @@ interface CanvasStore {
 const useCanvasStore = create<CanvasStore>((set,get) => ({
   canvas: DEFAULT_CANVAS_SCHEMA,
   selectedComponents: [],
+  dragOffset: null,
   history: [],
   historyIndex: -1, 
   toolMode: ToolMode.MOUSE,
@@ -108,6 +119,54 @@ const useCanvasStore = create<CanvasStore>((set,get) => ({
     findAndUpdate(newCanvas.components) && get().setCanvas(newCanvas);
   },
   /**
+   * 批量更新组件位置（用于多选拖动）
+   * @param clearDragOffset 是否同时清除拖动偏移（原子操作，避免闪烁）
+   */
+  updateComponentsPosition: (updates: { id: string; deltaX: number; deltaY: number }[], clearDragOffset = false) => {
+    const { canvas, history, historyIndex } = get();
+    if (!canvas || updates.length === 0) return;
+    
+    const newCanvas = deepClone(canvas);
+    const updateMap = new Map(updates.map(u => [u.id, u]));
+    
+    const findAndUpdatePositions = (components: ComponentSchema[]) => {
+      for (const comp of components) {
+        const update = updateMap.get(comp.id);
+        if (update) {
+          const currentLeft = (comp.style?.left as number) || 0;
+          const currentTop = (comp.style?.top as number) || 0;
+          comp.style = {
+            ...comp.style,
+            left: currentLeft + update.deltaX,
+            top: currentTop + update.deltaY,
+          };
+        }
+        if (comp.children) {
+          findAndUpdatePositions(comp.children);
+        }
+      }
+    };
+    
+    findAndUpdatePositions(newCanvas.components);
+    
+    // 原子操作：同时更新 canvas 和 dragOffset，避免中间状态导致闪烁
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(deepClone(newCanvas));
+    
+    set({
+      canvas: newCanvas,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+      ...(clearDragOffset ? { dragOffset: null } : {}),
+    });
+  },
+  /**
+   * 设置拖动偏移（用于多选拖动时的实时预览）
+   */
+  setDragOffset: (offset: { x: number; y: number } | null) => {
+    set({ dragOffset: offset });
+  },
+  /**
    * 删除组件
    */
   deleteComponent: (id: string)=>{
@@ -132,14 +191,17 @@ const useCanvasStore = create<CanvasStore>((set,get) => ({
   /**
    * 选中组件
    */
-  selectComponent: (id: string | null)=>{
+  selectComponent: (id: string | null, multiSelect?: boolean)=>{
     const { selectedComponents } = get();
     if (id === null) {
       set({ selectedComponents: [] }); // 清空选中的组件ID列表
-    } else { // 添加或移除选中的组件ID
+    } else if (multiSelect) { // 多选模式
       set({ selectedComponents: selectedComponents.includes(id) 
-        ? selectedComponents.filter(compId => compId !== id) // 移除选中的组件ID
-        : [...selectedComponents, id] }); // 添加选中的组件ID
+        ? selectedComponents.filter(compId => compId !== id) 
+        : [...selectedComponents, id]
+      })
+    } else { // 单选模式
+      set({ selectedComponents: [id] });
     }
   },
   /**
