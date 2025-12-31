@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { InputNumber } from 'antd';
 import { ToolMode } from '@/types/schema';
+import useCanvasStore from '@/store/canvasStore';
 import type { CanvasRef } from '../Canvas';
 import './index.scss';
 
@@ -15,11 +16,75 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
   const [showMore, setShowMore] = useState(true);
   const [currentScale, setCurrentScale] = useState(scale);
 
+  const {
+    undo, redo, historyIndex, history,
+    selectedComponents, clipboard,
+    copySelectedComponents, cutSelectedComponents, pasteComponents, deleteSelectedComponents,
+  } = useCanvasStore();
+  
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+  const hasSelection = selectedComponents.length > 0;
+  const hasClipboard = clipboard.length > 0;
+
   const { minScale, maxScale } = canvasRef.current?.config ?? { minScale: 0.2, maxScale: 3 };
 
   useEffect(() => {
     setCurrentScale(scale);
   }, [scale]);
+
+  // 键盘快捷键
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 如果焦点在输入框内，不处理快捷键
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      // @ts-expect-error userAgentData 是较新的 API
+      const isMac = navigator.userAgentData?.platform === 'macOS' || /Mac|iPhone|iPad/.test(navigator.userAgent);
+      const modifier = isMac ? e.metaKey : e.ctrlKey;
+
+      // 撤销 Ctrl+Z
+      if (modifier && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo) undo();
+      }
+      // 重做 Ctrl+Y / Ctrl+Shift+Z
+      else if (modifier && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+        e.preventDefault();
+        if (canRedo) redo();
+      }
+      // 复制 Ctrl+C
+      else if (modifier && e.key === 'c') {
+        e.preventDefault();
+        if (hasSelection) copySelectedComponents();
+      }
+      // 剪切 Ctrl+X
+      else if (modifier && e.key === 'x') {
+        e.preventDefault();
+        if (hasSelection) cutSelectedComponents();
+      }
+      // 粘贴 Ctrl+V
+      else if (modifier && e.key === 'v') {
+        e.preventDefault();
+        if (hasClipboard) pasteComponents();
+      }
+      // 删除 Delete / Backspace
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && !modifier) {
+        e.preventDefault();
+        if (hasSelection) deleteSelectedComponents();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    undo, redo, canUndo, canRedo,
+    copySelectedComponents, cutSelectedComponents, pasteComponents, deleteSelectedComponents,
+    hasSelection, hasClipboard,
+  ]);
 
   const handleScaleChange = (value: number | null) => {
     if (value === null) return;
@@ -30,20 +95,30 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
 
   const formatScale = (value: number) => Math.round(value * 100);
 
+  const handleUndo = useCallback(() => {
+    if (canUndo) undo();
+  }, [canUndo, undo]);
+
+  const handleRedo = useCallback(() => {
+    if (canRedo) redo();
+  }, [canRedo, redo]);
+
   const toolbarItems = useMemo(() => [
     {
-      icon: 'icon-',
+      icon: 'icon-chexiao',
       key: 'undo',
-      tooltip: '撤销',
-      onClick: () => console.log('undo'),
-      position: 'left'
+      tooltip: '撤销 (Ctrl+Z)',
+      onClick: handleUndo,
+      position: 'left',
+      disabled: !canUndo,
     },
     {
-      icon: 'icon-',
+      icon: 'icon-zhongzuo',
       key: 'redo',
-      tooltip: '重做',
-      onClick: () => console.log('redo'),
-      position: 'left'
+      tooltip: '重做 (Ctrl+Y)',
+      onClick: handleRedo,
+      position: 'left',
+      disabled: !canRedo,
     },
     {
       icon: 'icon-zhuashou',
@@ -73,7 +148,7 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
       onClick: () => canvasRef.current?.zoomTo(1),
       position: 'right',
     },
-  ], [canvasRef, setToolMode]);
+  ], [canvasRef, setToolMode, handleUndo, handleRedo, canUndo, canRedo]);
 
   return (
     <div className="toolbar">
@@ -81,9 +156,9 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
         <div className='toolbar-left-items'>
           {toolbarItems.filter((item) => item.position === 'left').map((item) => (
             <div
-              className={`toolbar-left-items-item`}
+              className={`toolbar-left-items-item${item.disabled ? ' disabled' : ''}`}
               key={item.key}
-              onClick={item.onClick}
+              onClick={item.disabled ? undefined : item.onClick}
               title={item.tooltip}
             >
               {item.icon && <i className={`iconfont ${item.icon}`} />}

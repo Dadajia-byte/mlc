@@ -21,11 +21,11 @@ export default function useZoom(config: UseZoomConfig, deps: UseZoomDeps) {
 
   const zoomTo = useCallback((newScale: number) => {
     const { width: cw, height: ch } = getContainerSize();
-    if (!cw || !ch) {
+    const v = viewportRef.current;
+    if (!cw || !ch || !v) {
       updateViewport({ scale: newScale });
       return;
     }
-    const v = viewportRef.current;
     const cx = (cw / 2 - v.x) / v.scale;
     const cy = (ch / 2 - v.y) / v.scale;
     updateViewport({
@@ -36,11 +36,13 @@ export default function useZoom(config: UseZoomConfig, deps: UseZoomDeps) {
   }, [getContainerSize, updateViewport, viewportRef]);
 
   const zoomIn = useCallback(() => {
-    zoomTo(Math.min(maxScale, viewportRef.current.scale + scaleStep));
+    const scale = viewportRef.current?.scale ?? 1;
+    zoomTo(Math.min(maxScale, scale + scaleStep));
   }, [maxScale, scaleStep, zoomTo, viewportRef]);
 
   const zoomOut = useCallback(() => {
-    zoomTo(Math.max(minScale, viewportRef.current.scale - scaleStep));
+    const scale = viewportRef.current?.scale ?? 1;
+    zoomTo(Math.max(minScale, scale - scaleStep));
   }, [minScale, scaleStep, zoomTo, viewportRef]);
 
   const zoomToFit = useCallback(() => {
@@ -57,8 +59,8 @@ export default function useZoom(config: UseZoomConfig, deps: UseZoomDeps) {
 
   const centerCanvas = useCallback(() => {
     const { width: cw, height: ch } = getContainerSize();
-    if (!cw || !ch || !canvasWidth || !canvasHeight) return;
     const v = viewportRef.current;
+    if (!cw || !ch || !canvasWidth || !canvasHeight || !v) return;
     updateViewport({
       x: (cw - canvasWidth * v.scale) / 2,
       y: (ch - canvasHeight * v.scale) / 2,

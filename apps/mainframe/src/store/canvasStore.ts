@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { CanvasSchema, ComponentSchema, ToolMode } from '@/types/schema';
-import { deepClone } from '@mlc/utils';
+import { deepClone, generateId } from '@mlc/utils';
 import { DEFAULT_CANVAS_SCHEMA } from '@/constants';
-import { findAndUpdate, findAndDelete, addToParent, traverseComponents } from '@/utils/componentTree';
+import { findAndUpdate, findAndDelete, addToParent, traverseComponents, findComponent } from '@/utils/componentTree';
 
 interface CanvasStore {
   canvas: CanvasSchema | null;
   selectedComponents: string[];
   dragOffset: { x: number; y: number } | null;
+  clipboard: ComponentSchema[];
   history: CanvasSchema[];
   historyIndex: number;
   toolMode: ToolMode;
@@ -18,19 +19,36 @@ interface CanvasStore {
   updateComponentsPosition: (updates: { id: string; deltaX: number; deltaY: number }[], clearDragOffset?: boolean) => void;
   setDragOffset: (offset: { x: number; y: number } | null) => void;
   deleteComponent: (id: string) => void;
+  deleteSelectedComponents: () => void;
   selectComponent: (id: string | null, multiSelect?: boolean) => void;
   setSelectedComponents: (ids: string[]) => void;
+  copySelectedComponents: () => void;
+  cutSelectedComponents: () => void;
+  pasteComponents: () => void;
   undo: () => void;
   redo: () => void;
   setToolMode: (toolMode: ToolMode) => void;
 }
 
+const initialCanvas = deepClone(DEFAULT_CANVAS_SCHEMA);
+
+// 为组件生成新ID（递归处理子组件）
+const regenerateIds = (component: ComponentSchema): ComponentSchema => {
+  const newComp = deepClone(component);
+  newComp.id = generateId('comp_');
+  if (newComp.children?.length) {
+    newComp.children = newComp.children.map(regenerateIds);
+  }
+  return newComp;
+};
+
 const useCanvasStore = create<CanvasStore>((set, get) => ({
-  canvas: DEFAULT_CANVAS_SCHEMA,
+  canvas: initialCanvas,
   selectedComponents: [],
   dragOffset: null,
-  history: [],
-  historyIndex: -1,
+  clipboard: [],
+  history: [initialCanvas],
+  historyIndex: 0,
   toolMode: ToolMode.MOUSE,
 
   setCanvas: (canvas: CanvasSchema) => {
@@ -102,6 +120,15 @@ const useCanvasStore = create<CanvasStore>((set, get) => ({
     }
   },
 
+  deleteSelectedComponents: () => {
+    const { canvas, selectedComponents } = get();
+    if (!canvas || selectedComponents.length === 0) return;
+    const newCanvas = deepClone(canvas);
+    selectedComponents.forEach(id => findAndDelete(newCanvas.components, id));
+    get().setCanvas(newCanvas);
+    set({ selectedComponents: [] });
+  },
+
   selectComponent: (id: string | null, multiSelect?: boolean) => {
     const { selectedComponents } = get();
     if (id === null) {
@@ -118,6 +145,45 @@ const useCanvasStore = create<CanvasStore>((set, get) => ({
   },
 
   setSelectedComponents: (ids: string[]) => set({ selectedComponents: ids }),
+
+  copySelectedComponents: () => {
+    const { canvas, selectedComponents } = get();
+    if (!canvas || selectedComponents.length === 0) return;
+    const copied: ComponentSchema[] = [];
+    selectedComponents.forEach(id => {
+      const comp = findComponent(canvas.components, id);
+      if (comp) copied.push(deepClone(comp));
+    });
+    set({ clipboard: copied });
+  },
+
+  cutSelectedComponents: () => {
+    get().copySelectedComponents();
+    get().deleteSelectedComponents();
+  },
+
+  pasteComponents: () => {
+    const { canvas, clipboard } = get();
+    if (!canvas || clipboard.length === 0) return;
+    
+    const newCanvas = deepClone(canvas);
+    const newIds: string[] = [];
+    const offset = 20; // 粘贴偏移量
+    
+    clipboard.forEach(comp => {
+      const newComp = regenerateIds(comp);
+      // 偏移位置避免重叠
+      if (newComp.style) {
+        newComp.style.left = ((newComp.style.left as number) || 0) + offset;
+        newComp.style.top = ((newComp.style.top as number) || 0) + offset;
+      }
+      newCanvas.components.push(newComp);
+      newIds.push(newComp.id);
+    });
+    
+    get().setCanvas(newCanvas);
+    set({ selectedComponents: newIds });
+  },
 
   undo: () => {
     const { history, historyIndex } = get();
