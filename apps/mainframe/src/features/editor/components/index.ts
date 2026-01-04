@@ -9,3 +9,5 @@ export { default as Toolbar } from './Toolbar';
 export { default as CanvasSelection } from './CanvasSelection';
 
 export { default as SelectionBounds } from './SelectionBounds';
+
+export { default as HistoryPanel } from './HistoryPanel';

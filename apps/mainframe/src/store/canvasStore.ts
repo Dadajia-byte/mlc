@@ -4,12 +4,17 @@ import { deepClone, generateId } from '@mlc/utils';
 import { DEFAULT_CANVAS_SCHEMA } from '@/constants';
 import { findAndUpdate, findAndDelete, addToParent, traverseComponents, findComponent } from '@/utils/componentTree';
 
+export interface HistoryEntry {
+  canvas: CanvasSchema;
+  timestamp: number;
+}
+
 interface CanvasStore {
   canvas: CanvasSchema | null;
   selectedComponents: string[];
   dragOffset: { x: number; y: number } | null;
   clipboard: ComponentSchema[];
-  history: CanvasSchema[];
+  history: HistoryEntry[];
   historyIndex: number;
   toolMode: ToolMode;
 
@@ -47,14 +52,14 @@ const useCanvasStore = create<CanvasStore>((set, get) => ({
   selectedComponents: [],
   dragOffset: null,
   clipboard: [],
-  history: [initialCanvas],
+  history: [{ canvas: initialCanvas, timestamp: Date.now() }],
   historyIndex: 0,
   toolMode: ToolMode.MOUSE,
 
   setCanvas: (canvas: CanvasSchema) => {
     const { history, historyIndex } = get();
     const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(deepClone(canvas));
+    newHistory.push({ canvas: deepClone(canvas), timestamp: Date.now() });
     set({ canvas, history: newHistory, historyIndex: newHistory.length - 1 });
   },
 
@@ -96,7 +101,7 @@ const useCanvasStore = create<CanvasStore>((set, get) => ({
     });
 
     const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(deepClone(newCanvas));
+    newHistory.push({ canvas: deepClone(newCanvas), timestamp: Date.now() });
 
     set({
       canvas: newCanvas,
@@ -188,14 +193,14 @@ const useCanvasStore = create<CanvasStore>((set, get) => ({
   undo: () => {
     const { history, historyIndex } = get();
     if (historyIndex > 0) {
-      set({ canvas: history[historyIndex - 1], historyIndex: historyIndex - 1 });
+      set({ canvas: history[historyIndex - 1].canvas, historyIndex: historyIndex - 1 });
     }
   },
 
   redo: () => {
     const { history, historyIndex } = get();
     if (historyIndex < history.length - 1) {
-      set({ canvas: history[historyIndex + 1], historyIndex: historyIndex + 1 });
+      set({ canvas: history[historyIndex + 1].canvas, historyIndex: historyIndex + 1 });
     }
   },
 

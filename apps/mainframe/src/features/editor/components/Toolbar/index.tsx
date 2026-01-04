@@ -3,6 +3,7 @@ import { InputNumber } from 'antd';
 import { ToolMode } from '@/types/schema';
 import useCanvasStore from '@/store/canvasStore';
 import type { CanvasRef } from '../Canvas';
+import HistoryPanel from '../HistoryPanel';
 import './index.scss';
 
 interface ToolbarProps {
@@ -15,6 +16,7 @@ interface ToolbarProps {
 const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
   const [showMore, setShowMore] = useState(true);
   const [currentScale, setCurrentScale] = useState(scale);
+  const [showHistory, setShowHistory] = useState(false);
 
   const {
     undo, redo, historyIndex, history,
@@ -121,6 +123,14 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
       disabled: !canRedo,
     },
     {
+      icon: 'icon-lishijilu',
+      key: 'history',
+      tooltip: '历史记录',
+      onClick: () => setShowHistory(!showHistory),
+      position: 'left',
+      active: showHistory,
+    },
+    {
       icon: 'icon-zhuashou',
       key: ToolMode.HAND,
       tooltip: '抓手',
@@ -148,7 +158,7 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
       onClick: () => canvasRef.current?.zoomTo(1),
       position: 'right',
     },
-  ], [canvasRef, setToolMode, handleUndo, handleRedo, canUndo, canRedo]);
+  ], [canvasRef, setToolMode, handleUndo, handleRedo, canUndo, canRedo, showHistory]);
 
   return (
     <div className="toolbar">
@@ -156,7 +166,7 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
         <div className='toolbar-left-items'>
           {toolbarItems.filter((item) => item.position === 'left').map((item) => (
             <div
-              className={`toolbar-left-items-item${item.disabled ? ' disabled' : ''}`}
+              className={`toolbar-left-items-item${item.disabled ? ' disabled' : ''}${item.active ? ' active' : ''}`}
               key={item.key}
               onClick={item.disabled ? undefined : item.onClick}
               title={item.tooltip}
@@ -208,6 +218,8 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
       <div className="toolbar-more" onClick={() => setShowMore(!showMore)}>
         <i className={`iconfont ${showMore ? 'icon-xiangyouzhankai' : 'icon-xiangzuoshouqi'}`} />
       </div>
+
+      <HistoryPanel visible={showHistory} onClose={() => setShowHistory(false)} />
     </div>
   );
 };
