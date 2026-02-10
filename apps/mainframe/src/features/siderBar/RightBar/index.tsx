@@ -3,21 +3,22 @@ import { InputNumber, Input, Switch, ColorPicker, Empty } from 'antd';
 import useCanvasStore from '@/store/canvasStore';
 import { findComponent } from '@/utils/componentTree';
 import { getComponent } from '@/registry/index';
-import type { ComponentSchema, EventBinding } from '@/types/schema';
+import type { ComponentSchema, EventBinding, PropertyBinding } from '@/types/schema';
 import type { ComponentLibrary } from '@/registry/index';
 import PropConfigPanel from './PropConfigPanel';
 import EventPanel from './EventPanel';
+import DataPanel from './DataPanel';
 import {
   AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd,
   AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd,
   AlignHorizontalSpaceAround, AlignVerticalSpaceAround,
-  Lock, Unlock, Eye, EyeOff, Settings, Zap, Palette,
+  Lock, Unlock, Eye, EyeOff, Settings, Zap, Palette, Database,
 } from 'lucide-react';
 import './index.scss';
 
 const MIXED = '—';
 
-type TabKey = 'style' | 'props' | 'events';
+type TabKey = 'style' | 'props' | 'events' | 'data';
 
 const RightBar = () => {
   const { canvas, selectedComponents, updateComponent, alignComponents, distributeComponents } = useCanvasStore();
@@ -85,6 +86,25 @@ const RightBar = () => {
   const updateEvents = useCallback((events: EventBinding[]) => {
     if (!selectedComp) return;
     updateComponent(selectedComp.id, { events });
+  }, [selectedComp, updateComponent]);
+
+  const updateBinding = useCallback((key: string, binding: PropertyBinding | undefined) => {
+    if (!selectedComp) return;
+    const currentBindings = selectedComp.bindings || {};
+    const newPropsBindings = { ...(currentBindings.props || {}) };
+    
+    if (binding) {
+      newPropsBindings[key] = binding;
+    } else {
+      delete newPropsBindings[key];
+    }
+    
+    updateComponent(selectedComp.id, {
+      bindings: {
+        ...currentBindings,
+        props: newPropsBindings,
+      },
+    });
   }, [selectedComp, updateComponent]);
 
   // 无选中
@@ -240,6 +260,14 @@ const RightBar = () => {
             <span className="right-bar-tab-badge">{comp.events!.length}</span>
           )}
         </button>
+        <button
+          className={`right-bar-tab ${activeTab === 'data' ? 'active' : ''}`}
+          onClick={() => setActiveTab('data')}
+          title="数据绑定"
+        >
+          <Database size={14} />
+          <span>数据</span>
+        </button>
       </div>
 
       <div className="right-bar-content">
@@ -252,7 +280,10 @@ const RightBar = () => {
                 <PropConfigPanel
                   propConfig={componentMeta!.propConfig!}
                   values={props}
+                  bindings={comp.bindings}
+                  componentId={comp.id}
                   onChange={updateProp}
+                  onBindingChange={updateBinding}
                 />
               </div>
             ) : (
@@ -351,6 +382,11 @@ const RightBar = () => {
               onChange={updateEvents}
             />
           </div>
+        )}
+
+        {/* 数据 Tab */}
+        {activeTab === 'data' && (
+          <DataPanel />
         )}
       </div>
     </div>

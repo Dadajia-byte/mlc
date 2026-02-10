@@ -2,7 +2,7 @@
   "name": "@mlc/materials",
   "version": "1.0.0",
   "type": "module",
-  "description": "物料库 - 组件注册表、物料元数据与组件实现",
+  "description": "物料库 - 组件元数据与映射",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -22,7 +22,8 @@
     }
   },
   "dependencies": {
-    "@mlc/schema": "workspace:*"
+    "@mlc/schema": "workspace:*",
+    "@mlc/renderer-core": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",

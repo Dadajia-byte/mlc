@@ -1,15 +1,29 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { InputNumber, Input, Switch, ColorPicker, Select, Slider, Radio } from 'antd';
-import type { PropConfig, PropFieldConfig } from '@mlc/schema';
+import type { PropConfig, PropFieldConfig, PropertyBinding, ComponentBindings } from '@mlc/schema';
+import ExpressionEditor from './ExpressionEditor';
 import './PropConfigPanel.scss';
 
 interface PropConfigPanelProps {
   propConfig: PropConfig;
   values: Record<string, any>;
+  bindings?: ComponentBindings;
+  componentId?: string;
   onChange: (key: string, value: any) => void;
+  onBindingChange?: (key: string, binding: PropertyBinding | undefined) => void;
+  /** 是否显示绑定按钮 */
+  showBinding?: boolean;
 }
 
-const PropConfigPanel = ({ propConfig, values, onChange }: PropConfigPanelProps) => {
+const PropConfigPanel = ({
+  propConfig,
+  values,
+  bindings,
+  componentId,
+  onChange,
+  onBindingChange,
+  showBinding = true,
+}: PropConfigPanelProps) => {
   // 按 group 分组
   const grouped = groupBySection(propConfig);
 
@@ -25,7 +39,11 @@ const PropConfigPanel = ({ propConfig, values, onChange }: PropConfigPanelProps)
                 propKey={key}
                 config={config}
                 value={values[key]}
+                binding={bindings?.props?.[key]}
+                componentId={componentId}
                 onChange={onChange}
+                onBindingChange={onBindingChange}
+                showBinding={showBinding}
               />
             ))}
           </div>
@@ -39,15 +57,57 @@ interface PropFieldProps {
   propKey: string;
   config: PropFieldConfig;
   value: any;
+  binding?: PropertyBinding;
+  componentId?: string;
   onChange: (key: string, value: any) => void;
+  onBindingChange?: (key: string, binding: PropertyBinding | undefined) => void;
+  showBinding?: boolean;
 }
 
-const PropField = ({ propKey, config, value, onChange }: PropFieldProps) => {
+const PropField = ({
+  propKey,
+  config,
+  value,
+  binding,
+  componentId,
+  onChange,
+  onBindingChange,
+  showBinding,
+}: PropFieldProps) => {
   const handleChange = useCallback((val: any) => {
     onChange(propKey, val);
   }, [propKey, onChange]);
 
+  const handleBindingChange = useCallback((newBinding: PropertyBinding | undefined) => {
+    onBindingChange?.(propKey, newBinding);
+  }, [propKey, onBindingChange]);
+
+  // 判断是否已绑定（非 static）
+  const isBound = binding && binding.type !== 'static';
+
+  // 获取值类型
+  const valueType = useMemo(() => {
+    switch (config.type) {
+      case 'number':
+      case 'slider':
+        return 'number';
+      case 'boolean':
+        return 'boolean';
+      default:
+        return 'string';
+    }
+  }, [config.type]);
+
   const renderField = () => {
+    // 如果已绑定，显示绑定状态而不是输入框
+    if (isBound) {
+      return (
+        <div className="prop-field-bound-placeholder">
+          已绑定
+        </div>
+      );
+    }
+
     switch (config.type) {
       case 'string':
         return (
@@ -178,7 +238,18 @@ const PropField = ({ propKey, config, value, onChange }: PropFieldProps) => {
         {config.required && <span className="prop-field-required">*</span>}
       </label>
       <div className="prop-field-control">
-        {renderField()}
+        <div className="prop-field-input">
+          {renderField()}
+        </div>
+        {showBinding && onBindingChange && (
+          <ExpressionEditor
+            binding={binding}
+            staticValue={value}
+            valueType={valueType}
+            componentId={componentId}
+            onBindingChange={handleBindingChange}
+          />
+        )}
       </div>
     </div>
   );

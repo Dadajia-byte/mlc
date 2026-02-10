@@ -1,0 +1,25 @@
+{
+  "name": "@mlc/renderer-core",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "跨框架渲染核心 - Schema 解析、事件执行、数据绑定运行时",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "../../node_modules/.bin/tsc && vite build",
+    "type-check": "../../node_modules/.bin/tsc --noEmit"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@mlc/schema": "workspace:*"
+  }
+}

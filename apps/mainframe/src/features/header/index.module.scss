@@ -210,3 +210,93 @@
     object-fit: cover;
   }
 }
+
+/* 预览按钮 */
+.previewWrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.previewBtn {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-right: none !important;
+  background: $primary-color !important;
+  border-color: $primary-color !important;
+  color: $white !important;
+
+  &:hover {
+    background: $primary-hover !important;
+    border-color: $primary-hover !important;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.previewDropdownTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 6px;
+  border: 1px solid $primary-color;
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+  background: $primary-color;
+  color: $white;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: $primary-hover;
+    border-color: $primary-hover;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.previewDropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: $white;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  border: 1px solid $border-color;
+  padding: 4px 0;
+  min-width: 160px;
+  z-index: 1000;
+}
+
+.previewDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: $gray-700;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: $gray-50;
+    color: $gray-900;
+  }
+}
+
+.previewDropdownIcon {
+  font-size: 14px;
+}
+
+.previewDropdownDivider {
+  height: 1px;
+  background: $border-color;
+  margin: 4px 0;
+}

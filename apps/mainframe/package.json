@@ -12,6 +12,8 @@
     "@mlc/utils": "workspace:*",
     "@mlc/schema": "workspace:*",
     "@mlc/materials": "workspace:*",
+    "@mlc/renderer-core": "workspace:*",
+    "@mlc/renderer-react": "workspace:*",
     "antd": "^6.0.0",
     "lucide-react": "^0.563.0",
     "react": "^18.2.0",

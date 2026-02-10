@@ -1,4 +1,5 @@
 import type { ComponentSchema } from './component';
+import type { VariableDefinition, DataSourceDefinition } from './binding';
 
 /**
  * 画布整体 Schema
@@ -16,6 +17,12 @@ export interface CanvasSchema {
   components: ComponentSchema[];
   /** 画布配置 */
   config?: CanvasConfig;
+  /** 全局变量定义 */
+  globalVariables?: VariableDefinition[];
+  /** 页面变量定义 */
+  pageVariables?: VariableDefinition[];
+  /** 数据源定义 */
+  dataSources?: DataSourceDefinition[];
 }
 
 /**

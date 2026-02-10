@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MLC Preview - React</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+    }
+    #root {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #666;
+    }
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #eee;
+      border-top-color: #1677ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #999;
+    }
+    .canvas-container {
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="loading">
+      <div class="loading-spinner"></div>
+      <p style="margin-top: 16px;">加载中...</p>
+    </div>
+  </div>
+
+  <!-- 加载 React 和 ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- 加载 Antd -->
+  <script src="https://unpkg.com/dayjs/dayjs.min.js"></script>
+  <script src="https://unpkg.com/antd@5/dist/antd.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/antd@5/dist/reset.css">
+
+  <script>
+    // MLC React Preview Runtime
+    (function() {
+      const { createElement: h, useState, useEffect, useMemo } = React;
+      const { Button, Input, Card, Typography, Divider } = antd;
+      const { Text, Title, Paragraph } = Typography;
+
+      // Antd 组件映射
+      const componentMap = {
+        Button: Button,
+        Input: Input,
+        Card: Card,
+        Text: Text,
+        Title: Title,
+        Paragraph: Paragraph,
+        Divider: Divider,
+      };
+
+      // 渲染单个组件
+      function renderComponent(schema) {
+        if (!schema) return null;
+
+        const Component = componentMap[schema.type];
+        if (!Component) {
+          return h('div', { 
+            key: schema.id,
+            style: { color: 'red', padding: 8, background: '#fff5f5' } 
+          }, `组件 ${schema.type} 未找到`);
+        }
+
+        const { style = {}, props = {}, children } = schema;
+        const { children: propsChildren, ...restProps } = props;
+
+        // 处理子组件
+        let childContent = propsChildren;
+        if (children && children.length > 0) {
+          childContent = children.map(child => renderComponent(child));
+        }
+
+        return h(Component, {
+          key: schema.id,
+          style: style,
+          ...restProps,
+          'data-component-id': schema.id,
+        }, childContent);
+      }
+
+      // 预览应用
+      function PreviewApp() {
+        const [schema, setSchema] = useState(null);
+        const [loading, setLoading] = useState(true);
+
+        useEffect(() => {
+          // 监听 postMessage
+          const handleMessage = (event) => {
+            if (event.data?.type === 'MLC_SCHEMA_UPDATE') {
+              setSchema(event.data.payload);
+              setLoading(false);
+            }
+          };
+
+          window.addEventListener('message', handleMessage);
+
+          // 检查 URL 参数中的 schemaKey
+          const params = new URLSearchParams(window.location.search);
+          const schemaKey = params.get('schemaKey');
+          if (schemaKey) {
+            const stored = localStorage.getItem(schemaKey);
+            if (stored) {
+              try {
+                setSchema(JSON.parse(stored));
+                setLoading(false);
+              } catch (e) {
+                console.error('解析 schema 失败:', e);
+              }
+            }
+          }
+
+          // 通知父窗口已就绪
+          if (window.parent !== window) {
+            window.parent.postMessage({ type: 'MLC_RENDERER_READY' }, '*');
+          }
+
+          // 3 秒后如果还没有 schema，显示空状态
+          const timer = setTimeout(() => {
+            setLoading(false);
+          }, 3000);
+
+          return () => {
+            window.removeEventListener('message', handleMessage);
+            clearTimeout(timer);
+          };
+        }, []);
+
+        if (loading) {
+          return h('div', { className: 'loading' },
+            h('div', { className: 'loading-spinner' }),
+            h('p', { style: { marginTop: 16 } }, '等待 Schema...')
+          );
+        }
+
+        if (!schema) {
+          return h('div', { className: 'empty' },
+            h('p', null, '暂无预览内容'),
+            h('p', { style: { fontSize: 12, marginTop: 8 } }, '请在编辑器中设计页面后预览')
+          );
+        }
+
+        const canvasStyle = {
+          width: schema.width || 800,
+          height: schema.height || 600,
+          position: 'relative',
+          background: schema.config?.background || '#fff',
+        };
+
+        return h('div', { className: 'canvas-container', style: canvasStyle },
+          (schema.components || []).map(comp => renderComponent(comp))
+        );
+      }
+
+      // 渲染应用
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(h(PreviewApp));
+    })();
+  </script>
+</body>
+</html>

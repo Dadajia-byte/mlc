@@ -10,7 +10,12 @@
   },
   "dependencies": {
     "vue": "^3.4.0",
-    "vue-router": "^4.2.0"
+    "vue-router": "^4.2.0",
+    "element-plus": "^2.4.0",
+    "@mlc/renderer-core": "workspace:*",
+    "@mlc/renderer-vue": "workspace:*",
+    "@mlc/schema": "workspace:*",
+    "@mlc/materials": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

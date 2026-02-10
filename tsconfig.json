@@ -26,7 +26,10 @@
       "@/*": ["src/*"],
       "@mlc/utils": ["libs/utils/src"],
       "@mlc/schema": ["libs/schema/src"],
-      "@mlc/materials": ["libs/materials/src"]
+      "@mlc/materials": ["libs/materials/src"],
+      "@mlc/renderer-core": ["libs/renderer-core/src"],
+      "@mlc/renderer-react": ["libs/renderer-react/src"],
+      "@mlc/renderer-vue": ["libs/renderer-vue/src"]
     }
   },
   "include": [],

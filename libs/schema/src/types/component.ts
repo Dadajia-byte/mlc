@@ -1,4 +1,5 @@
 import type { EventBinding } from './event';
+import type { ComponentBindings, VariableDefinition } from './binding';
 
 /**
  * 组件库类型
@@ -34,6 +35,10 @@ export interface ComponentSchema {
   editor?: EditorConfig;
   /** 事件绑定列表 */
   events?: EventBinding[];
+  /** 数据绑定配置 */
+  bindings?: ComponentBindings;
+  /** 组件级别变量定义 */
+  variables?: VariableDefinition[];
 }
 
 /**

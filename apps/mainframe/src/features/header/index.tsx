@@ -3,7 +3,8 @@ import useCanvasStore from '@/store/canvasStore';
 import { ToolMode } from '@/types/schema';
 import type { CanvasRef } from '@/features/editor/components/Canvas';
 import HistoryPanel from '@/features/editor/components/HistoryPanel';
-import { Undo2, Redo2, History, MousePointer2, Hand, ZoomOut, ZoomIn, Maximize, Eye, Download, Upload } from 'lucide-react';
+import { Preview, openPreviewWindow, PreviewTarget } from '@/features/preview';
+import { Undo2, Redo2, History, MousePointer2, Hand, ZoomOut, ZoomIn, Maximize, Eye, Download, Upload, Play, ChevronDown, ExternalLink } from 'lucide-react';
 import styles from './index.module.scss';
 
 const avator = new URL('../../assets/temp/avator.png', import.meta.url).href;
@@ -40,8 +41,27 @@ const Header = ({ canvasRef, scale, toolMode, setToolMode, isPreview, onTogglePr
   const [currentScale, setCurrentScale] = useState(scale);
   const [showHistory, setShowHistory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 预览相关状态
+  const [showPreviewDropdown, setShowPreviewDropdown] = useState(false);
+  const [showPreviewPanel, setShowPreviewPanel] = useState(false);
+  const [previewTarget, setPreviewTarget] = useState<PreviewTarget>('vue');
+  const previewDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setCurrentScale(scale); }, [scale]);
+
+  // 点击外部关闭预览下拉菜单
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (previewDropdownRef.current && !previewDropdownRef.current.contains(e.target as Node)) {
+        setShowPreviewDropdown(false);
+      }
+    };
+    if (showPreviewDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showPreviewDropdown]);
 
   // 全局键盘快捷键
   useEffect(() => {
@@ -154,6 +174,19 @@ const Header = ({ canvasRef, scale, toolMode, setToolMode, isPreview, onTogglePr
     e.target.value = '';
   }, [setCanvas]);
 
+  // 预览处理
+  const handlePreview = useCallback((target: PreviewTarget, newWindow: boolean = false) => {
+    if (!canvas) return;
+    setShowPreviewDropdown(false);
+    
+    if (newWindow) {
+      openPreviewWindow(canvas, target);
+    } else {
+      setPreviewTarget(target);
+      setShowPreviewPanel(true);
+    }
+  }, [canvas]);
+
   return (
     <div className={styles.header}>
       {/* 左侧: Logo + 项目名 */}
@@ -237,10 +270,53 @@ const Header = ({ canvasRef, scale, toolMode, setToolMode, isPreview, onTogglePr
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
-        <button className={`${styles.actionBtn} ${isPreview ? styles.active : ''}`} onClick={onTogglePreview} title="预览">
+        
+        {/* 预览按钮带下拉菜单 */}
+        <div className={styles.previewWrapper} ref={previewDropdownRef}>
+          <button 
+            className={`${styles.actionBtn} ${styles.previewBtn}`}
+            onClick={() => handlePreview('vue')}
+            disabled={!canvas}
+          >
+            <Play size={16} />
+            <span>预览</span>
+          </button>
+          <button 
+            className={styles.previewDropdownTrigger}
+            onClick={() => setShowPreviewDropdown(!showPreviewDropdown)}
+            disabled={!canvas}
+          >
+            <ChevronDown size={14} />
+          </button>
+          
+          {showPreviewDropdown && (
+            <div className={styles.previewDropdown}>
+              <div className={styles.previewDropdownItem} onClick={() => handlePreview('vue', false)}>
+                <span className={styles.previewDropdownIcon}>🟢</span>
+                Vue (Element Plus)
+              </div>
+              <div className={styles.previewDropdownItem} onClick={() => handlePreview('react', false)}>
+                <span className={styles.previewDropdownIcon}>🔵</span>
+                React (Antd)
+              </div>
+              <div className={styles.previewDropdownDivider} />
+              <div className={styles.previewDropdownItem} onClick={() => handlePreview('vue', true)}>
+                <ExternalLink size={14} />
+                Vue - 新窗口
+              </div>
+              <div className={styles.previewDropdownItem} onClick={() => handlePreview('react', true)}>
+                <ExternalLink size={14} />
+                React - 新窗口
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 简单预览（编辑态内预览） */}
+        <button className={`${styles.actionBtn} ${isPreview ? styles.active : ''}`} onClick={onTogglePreview} title="编辑态预览">
           <Eye size={16} />
-          <span>预览</span>
         </button>
+        
         <button className={`${styles.actionBtn} ${styles.primary}`} onClick={handleExport} title="导出 JSON">
           <Download size={16} />
           <span>导出</span>
@@ -249,6 +325,14 @@ const Header = ({ canvasRef, scale, toolMode, setToolMode, isPreview, onTogglePr
           <img src={avator} alt="avatar" />
         </div>
       </div>
+
+      {/* 预览面板 */}
+      <Preview
+        schema={canvas}
+        target={previewTarget}
+        visible={showPreviewPanel}
+        onClose={() => setShowPreviewPanel(false)}
+      />
     </div>
   );
 };
