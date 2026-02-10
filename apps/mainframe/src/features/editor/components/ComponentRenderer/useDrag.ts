@@ -1,4 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import useCanvasStore from '@/store/canvasStore';
+import { calcSnapPosition } from '@/utils/snap';
+import { getComponentRect } from '@/utils/geometry';
 
 export interface DragPosition {
   x: number;
@@ -6,6 +9,7 @@ export interface DragPosition {
 }
 
 export interface UseDragOptions {
+  componentId?: string;
   initialPosition?: DragPosition;
   enabled?: boolean;
   scale?: number;
@@ -17,11 +21,12 @@ export interface UseDragOptions {
   };
   onDragStart?: (position: DragPosition) => void;
   onDrag?: (position: DragPosition, delta: DragPosition) => void;
-  onDragEnd?: (position: DragPosition, delta?: DragPosition) => void;
+  onDragEnd?: (position: DragPosition, delta?: DragPosition, altKey?: boolean) => void;
 }
 
 export default function useDrag(options: UseDragOptions = {}) {
   const {
+    componentId,
     initialPosition = { x: 0, y: 0 },
     enabled = true,
     scale = 1,
@@ -36,6 +41,7 @@ export default function useDrag(options: UseDragOptions = {}) {
   const dragStartPos = useRef<DragPosition>({ x: 0, y: 0 });
   const positionRef = useRef<DragPosition>(position);
   const totalDeltaRef = useRef<DragPosition>({ x: 0, y: 0 });
+  const altKeyRef = useRef(false);
 
   // 限制位置在边界内
   const clampPosition = useCallback((pos: DragPosition): DragPosition => {
@@ -67,6 +73,7 @@ export default function useDrag(options: UseDragOptions = {}) {
 
       dragStartPos.current = { x: e.clientX, y: e.clientY };
       totalDeltaRef.current = { x: 0, y: 0 };
+      altKeyRef.current = e.altKey;
       setIsDragging(true);
       onDragStart?.(positionRef.current);
     },
@@ -78,6 +85,7 @@ export default function useDrag(options: UseDragOptions = {}) {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      altKeyRef.current = e.altKey;
       const deltaX = (e.clientX - dragStartPos.current.x) / scale;
       const deltaY = (e.clientY - dragStartPos.current.y) / scale;
 
@@ -85,7 +93,34 @@ export default function useDrag(options: UseDragOptions = {}) {
         x: initialPosition.x + deltaX,
         y: initialPosition.y + deltaY,
       };
-      const clampedPos = clampPosition(rawPos);
+
+      // 吸附逻辑
+      const store = useCanvasStore.getState();
+      const { canvas, selectedComponents } = store;
+      let snappedPos = rawPos;
+
+      if (componentId && canvas) {
+        // 获取拖拽组件的实际尺寸
+        const comp = canvas.components.find(c => c.id === componentId);
+        const compRect = comp ? getComponentRect(comp, scale) : null;
+        const dragRect = {
+          x: rawPos.x,
+          y: rawPos.y,
+          width: compRect?.width ?? 100,
+          height: compRect?.height ?? 40,
+        };
+
+        const dragIds = selectedComponents.length > 0 ? selectedComponents : [componentId];
+        const snapResult = calcSnapPosition(dragRect, canvas.components, dragIds, scale, {
+          width: canvas.width,
+          height: canvas.height,
+        });
+
+        snappedPos = { x: snapResult.x, y: snapResult.y };
+        store.setGuidelines(snapResult.guidelines);
+      }
+
+      const clampedPos = clampPosition(snappedPos);
 
       const delta = {
         x: clampedPos.x - positionRef.current.x,
@@ -104,7 +139,9 @@ export default function useDrag(options: UseDragOptions = {}) {
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      onDragEnd?.(positionRef.current, totalDeltaRef.current);
+      onDragEnd?.(positionRef.current, totalDeltaRef.current, altKeyRef.current);
+      // 清除辅助线
+      useCanvasStore.getState().setGuidelines([]);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -114,7 +151,7 @@ export default function useDrag(options: UseDragOptions = {}) {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, scale, initialPosition.x, initialPosition.y, clampPosition, onDrag, onDragEnd]);
+  }, [isDragging, scale, initialPosition.x, initialPosition.y, clampPosition, onDrag, onDragEnd, componentId]);
 
   return {
     position,

@@ -1,0 +1,44 @@
+@use "@/styles/variables.scss" as *;
+
+.resize-handle {
+  position: absolute;
+  z-index: $z-resize-handle;
+  background: $resize-handle-bg;
+  border: 1.5px solid $resize-handle-border;
+  border-radius: 2px;
+
+  // 角点手柄
+  &-nw, &-ne, &-sw, &-se {
+    width: 8px;
+    height: 8px;
+  }
+
+  // 边中点手柄
+  &-n, &-s {
+    width: 16px;
+    height: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  &-e, &-w {
+    width: 6px;
+    height: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  // 位置 - 中心点对齐 wrapper 边缘
+  &-nw { top: -4px; left: -4px; }
+  &-ne { top: -4px; right: -4px; }
+  &-sw { bottom: -4px; left: -4px; }
+  &-se { bottom: -4px; right: -4px; }
+  &-n  { top: -3px; }
+  &-s  { bottom: -3px; }
+  &-e  { right: -3px; }
+  &-w  { left: -3px; }
+
+  &:hover {
+    background: $resize-handle-hover;
+  }
+}

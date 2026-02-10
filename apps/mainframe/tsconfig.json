@@ -5,7 +5,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@mlc/utils": ["../../libs/utils/src"]
+      "@mlc/utils": ["../../libs/utils/src"],
+      "@mlc/schema": ["../../libs/schema/src"],
+      "@mlc/materials": ["../../libs/materials/src"]
     }
   },
   "include": ["src", "src/types/**/*.d.ts"],

@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { InputNumber } from 'antd';
 import { ToolMode } from '@/types/schema';
 import useCanvasStore from '@/store/canvasStore';
 import type { CanvasRef } from '../Canvas';
 import HistoryPanel from '../HistoryPanel';
+import { Undo2, Redo2, History, Hand, MousePointer2, Maximize, Ratio, ChevronRight, ChevronLeft } from 'lucide-react';
 import './index.scss';
 
 interface ToolbarProps {
@@ -22,6 +23,9 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
     undo, redo, historyIndex, history,
     selectedComponents, clipboard,
     copySelectedComponents, cutSelectedComponents, pasteComponents, deleteSelectedComponents,
+    bringForward, sendBackward, bringToFront, sendToBack,
+    updateComponent, canvas,
+    groupComponents, ungroupComponents,
   } = useCanvasStore();
   
   const canUndo = historyIndex > 0;
@@ -78,6 +82,68 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
         e.preventDefault();
         if (hasSelection) deleteSelectedComponents();
       }
+      // 全选 Ctrl+A
+      else if (modifier && e.key === 'a') {
+        e.preventDefault();
+        if (canvas) {
+          const allIds = canvas.components.map(c => c.id);
+          useCanvasStore.getState().setSelectedComponents(allIds);
+        }
+      }
+      // 上移一层 Ctrl+]
+      else if (modifier && !e.shiftKey && e.key === ']') {
+        e.preventDefault();
+        if (selectedComponents.length === 1) bringForward(selectedComponents[0]);
+      }
+      // 下移一层 Ctrl+[
+      else if (modifier && !e.shiftKey && e.key === '[') {
+        e.preventDefault();
+        if (selectedComponents.length === 1) sendBackward(selectedComponents[0]);
+      }
+      // 置顶 Ctrl+Shift+]
+      else if (modifier && e.shiftKey && e.key === '}') {
+        e.preventDefault();
+        if (selectedComponents.length === 1) bringToFront(selectedComponents[0]);
+      }
+      // 置底 Ctrl+Shift+[
+      else if (modifier && e.shiftKey && e.key === '{') {
+        e.preventDefault();
+        if (selectedComponents.length === 1) sendToBack(selectedComponents[0]);
+      }
+      // 锁定/解锁 Ctrl+L
+      else if (modifier && e.key === 'l') {
+        e.preventDefault();
+        if (selectedComponents.length === 1 && canvas) {
+          const comp = canvas.components.find(c => c.id === selectedComponents[0]);
+          if (comp) {
+            updateComponent(comp.id, { editor: { ...comp.editor, locked: !comp.editor?.locked } });
+          }
+        }
+      }
+      // 隐藏/显示 Ctrl+H
+      else if (modifier && e.key === 'h') {
+        e.preventDefault();
+        if (selectedComponents.length === 1 && canvas) {
+          const comp = canvas.components.find(c => c.id === selectedComponents[0]);
+          if (comp) {
+            const isVisible = comp.editor?.visible !== false;
+            updateComponent(comp.id, { editor: { ...comp.editor, visible: !isVisible } });
+          }
+        }
+      }
+      // 编组 Ctrl+G
+      else if (modifier && !e.shiftKey && e.key === 'g') {
+        e.preventDefault();
+        if (selectedComponents.length >= 2) groupComponents();
+      }
+      // 取消编组 Ctrl+Shift+G
+      else if (modifier && e.shiftKey && (e.key === 'G' || e.key === 'g')) {
+        e.preventDefault();
+        if (selectedComponents.length === 1 && canvas) {
+          const comp = canvas.components.find(c => c.id === selectedComponents[0]);
+          if (comp?.isGroup) ungroupComponents();
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -85,7 +151,9 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
   }, [
     undo, redo, canUndo, canRedo,
     copySelectedComponents, cutSelectedComponents, pasteComponents, deleteSelectedComponents,
-    hasSelection, hasClipboard,
+    hasSelection, hasClipboard, selectedComponents, canvas,
+    bringForward, sendBackward, bringToFront, sendToBack, updateComponent,
+    groupComponents, ungroupComponents,
   ]);
 
   const handleScaleChange = (value: number | null) => {
@@ -105,9 +173,9 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
     if (canRedo) redo();
   }, [canRedo, redo]);
 
-  const toolbarItems = useMemo(() => [
+  const toolbarItems: { icon: ReactNode; key: string; tooltip: string; onClick: () => void; position: string; disabled?: boolean; active?: boolean }[] = useMemo(() => [
     {
-      icon: 'icon-chexiao',
+      icon: <Undo2 size={16} />,
       key: 'undo',
       tooltip: '撤销 (Ctrl+Z)',
       onClick: handleUndo,
@@ -115,7 +183,7 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
       disabled: !canUndo,
     },
     {
-      icon: 'icon-zhongzuo',
+      icon: <Redo2 size={16} />,
       key: 'redo',
       tooltip: '重做 (Ctrl+Y)',
       onClick: handleRedo,
@@ -123,7 +191,7 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
       disabled: !canRedo,
     },
     {
-      icon: 'icon-lishijilu',
+      icon: <History size={16} />,
       key: 'history',
       tooltip: '历史记录',
       onClick: () => setShowHistory(!showHistory),
@@ -131,28 +199,28 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
       active: showHistory,
     },
     {
-      icon: 'icon-zhuashou',
+      icon: <Hand size={16} />,
       key: ToolMode.HAND,
       tooltip: '抓手',
       onClick: () => setToolMode(ToolMode.HAND),
       position: 'right',
     },
     {
-      icon: 'icon-shubiaojiantou',
+      icon: <MousePointer2 size={16} />,
       key: ToolMode.MOUSE,
       tooltip: '鼠标',
       onClick: () => setToolMode(ToolMode.MOUSE),
       position: 'right',
     },
     {
-      icon: 'icon-shiyingpingmu',
+      icon: <Maximize size={16} />,
       key: 'fit-screen',
       tooltip: '适应屏幕',
       onClick: () => canvasRef.current?.zoomToFit(),
       position: 'right',
     },
     {
-      icon: 'icon-quark-yi-bi-yi',
+      icon: <Ratio size={16} />,
       key: 'original-size',
       tooltip: '原始尺寸',
       onClick: () => canvasRef.current?.zoomTo(1),
@@ -171,7 +239,7 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
               onClick={item.disabled ? undefined : item.onClick}
               title={item.tooltip}
             >
-              {item.icon && <i className={`iconfont ${item.icon}`} />}
+              {item.icon}
             </div>
           ))}
         </div>
@@ -186,7 +254,7 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
                 onClick={item.onClick}
                 title={item.tooltip}
               >
-                {item.icon && <i className={`iconfont ${item.icon}`} />}
+                {item.icon}
               </div>
             ))}
           </div>
@@ -216,7 +284,7 @@ const Toolbar = ({ canvasRef, scale, toolMode, setToolMode }: ToolbarProps) => {
       </div>
 
       <div className="toolbar-more" onClick={() => setShowMore(!showMore)}>
-        <i className={`iconfont ${showMore ? 'icon-xiangyouzhankai' : 'icon-xiangzuoshouqi'}`} />
+        {showMore ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </div>
 
       <HistoryPanel visible={showHistory} onClose={() => setShowHistory(false)} />

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { ChevronDown } from 'lucide-react';
 import './index.scss';
 
 interface SelectOption {
@@ -74,7 +75,7 @@ const Select = ({ options, value, onChange, placeholder = '请选择', className
       >
         <span className="select-text">{displayText}</span>
         <span className={`select-arrow ${dropdownDirection === 'up' ? 'up' : ''}`}>
-          <i className='iconfont icon-xiangxia'></i>
+          <ChevronDown size={14} />
         </span>
       </div>
       

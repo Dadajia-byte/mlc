@@ -1,56 +1,39 @@
-import { ComponentLibrary } from "@/registry";
-export interface ComponentSchema {
-  id: string; // 组件唯一ID
-  type: string; // 组件类型(对应组件库中的组件名)
-  library: ComponentLibrary; // 组件库
-  props: Record<string, any>; // 组件属性
-  children: ComponentSchema[]; // 子组件
-  parentId?: string; // 父组件ID
-  style?: { // 样式配置
-    position?: 'absolute' | 'relative' | 'fixed';
-    left?: number;
-    top?: number;
-    width?: number;
-    height?: number;
-    zIndex?: number;
-    // ...其他样式 todo
-  };
-  editor?: { // 编辑相关配置
-    selected?: boolean; // 是否选中
-    locked?: boolean; // 是否锁定
-    visible?: boolean; // 是否可见
-    // ...其他编辑相关配置 todo
-  };
-}
+// 从 @mlc/schema 统一导出所有类型
+export type {
+  ComponentSchema,
+  ComponentStyle,
+  EditorConfig,
+  ComponentLibrary,
+  ComponentFramework,
+  CanvasSchema,
+  CanvasConfig,
+  GridConfig,
+  PropFieldType,
+  SelectOption,
+  PropFieldConfig,
+  PropConfig,
+  PropGroup,
+  EventActionType,
+  EventTrigger,
+  EventBinding,
+  EventDeclaration,
+  EventActionConfig,
+  NavigateConfig,
+  ShowMessageConfig,
+  SetStateConfig,
+  CallApiConfig,
+  CustomCodeConfig,
+} from '@mlc/schema';
 
-// 画布整体布局配置
-export interface CanvasSchema {
-  id: string; // 画布唯一ID
-  name: string; // 画布名称
-  width: number; // 画布宽度
-  height: number; // 画布高度
-  components: ComponentSchema[]; // 组件列表
-  config?: { // 画布配置
-    backgroundColor?: string; // 画布背景颜色
-    backgroundImage?: string; // 画布背景图片
-    backgroundSize?: string; // 画布背景大小
-    backgroundPosition?: string; // 画布背景位置
-    backgroundRepeat?: string; // 画布背景重复
-    backgroundAttachment?: string; // 画布背景附件
-    backgroundOrigin?: string; // 画布背景原点
-    grid?: { // 网格配置
-      enabled?: boolean; // 是否启用网格
-      size?: number; // 网格大小
-      color?: string; // 网格颜色
-      // ...其他网格配置 todo
-    };
-    // ...其他配置 todo
-  }
-}
+export { ToolMode } from '@mlc/schema';
 
-export enum ToolMode {
-  /** 鼠标模式 - 可以框选组件、选择组件等 */
-  MOUSE = 'mouse',
-  /** 抓手模式 - 只能拖拽画布 */
-  HAND = 'hand',
-}
+// 重导出校验和辅助方法
+export {
+  validateCanvas,
+  validateComponent,
+  createEventBinding,
+  createDefaultActionConfig,
+  addEventToComponent,
+  removeEventFromComponent,
+  updateEventInComponent,
+} from '@mlc/schema';

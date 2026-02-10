@@ -1,3 +1,5 @@
+@use "@/styles/variables.scss" as *;
+
 .custom-select {
   position: relative;
   display: inline-block;
@@ -8,31 +10,31 @@
     align-items: center;
     justify-content: space-between;
     padding: .25rem .625rem;
-    border: .0625rem solid #e1e6ec;
+    border: .0625rem solid $border-color;
     border-radius: .3125rem;
-    background-color: #fff;
+    background-color: $white;
     cursor: pointer;
     transition: all .3s ease;
     font-size: .625rem;
 
     &:hover {
-      border-color: $secondary-color;
+      border-color: $primary-light;
     }
 
     &.open {
       border-color: $primary-color;
-      box-shadow: 0 .0625rem .125rem rgba(24, 144, 255, 0.2);
+      box-shadow: 0 .0625rem .125rem rgba($primary-color, 0.2);
     }
 
     .select-text {
       flex: 1;
-      color: #333;
+      color: $gray-900;
     }
 
     .select-arrow {
       margin-left: .25rem;
       font-size: .625rem;
-      color: #666;
+      color: $gray-500;
       transition: transform .3s ease;
       
       &.up {
@@ -49,11 +51,11 @@
     position: absolute;
     left: 0;
     right: 0;
-    background-color: #fff;
-    border: .0625rem solid #e1e6ec;
+    background-color: $white;
+    border: .0625rem solid $border-color;
     border-radius: .3125rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
+    box-shadow: $shadow-md;
+    z-index: $z-dropdown;
     max-height: 200px;
     overflow-y: auto;
 
@@ -72,16 +74,16 @@
       padding: .375rem .5rem;
       cursor: pointer;
       font-size: .625rem;
-      color: #333;
+      color: $gray-900;
       transition: background-color .2s ease;
       border-radius: .25rem;
 
       &:hover {
-        background-color: #f1f0fe;
+        background-color: $primary-bg;
       }
 
       &.selected {
-        background-color: $secondary-color;
+        background-color: $primary-light;
         color: $primary-color;
       }
 

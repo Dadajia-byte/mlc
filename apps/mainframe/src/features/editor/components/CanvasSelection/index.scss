@@ -1,7 +1,8 @@
-@import '@/styles/variables.scss';
+@use "@/styles/variables.scss" as *;
+
 .canvas-selection {
   position: absolute;
   background-color: $select-area-background-color;
   border: 1px solid $select-area-border-color;
-  z-index: 1000;
+  z-index: $z-canvas-selection;
 }

@@ -1,0 +1,23 @@
+@use "@/styles/variables.scss" as *;
+
+.guidelines-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: $z-guidelines;
+  overflow: visible;
+}
+
+.guideline {
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+
+  &-vertical {
+    stroke: $guideline-color;
+  }
+
+  &-horizontal {
+    stroke: $guideline-color;
+  }
+}

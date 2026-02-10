@@ -32,7 +32,13 @@ export default defineConfig(({ mode }) => {
         // 开发环境使用源码，生产环境使用打包产物
         "@mlc/utils": isDev
           ? path.resolve(__dirname, '../../libs/utils/src')
-          : '@mlc/utils' // 生产环境通过 workspace 解析到 dist/index.js
+          : '@mlc/utils',
+        "@mlc/schema": isDev
+          ? path.resolve(__dirname, '../../libs/schema/src')
+          : '@mlc/schema',
+        "@mlc/materials": isDev
+          ? path.resolve(__dirname, '../../libs/materials/src')
+          : '@mlc/materials'
       }
     }
   }

@@ -1,6 +1,7 @@
-import { useMemo, useEffect, useRef, useCallback } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import useCanvasStore, { HistoryEntry } from '@/store/canvasStore';
 import { CanvasSchema, ComponentSchema } from '@/types/schema';
+import { X, Undo2, Redo2 } from 'lucide-react';
 import './index.scss';
 
 // 格式化时间：今天显示 HH:mm，其他显示 MM-DD HH:mm
@@ -90,7 +91,7 @@ const HistoryPanel = ({ visible, onClose }: HistoryPanelProps) => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       // 排除点击历史按钮本身
-      if (target.closest('.toolbar-left-items-item')) return;
+      if (target.closest('[title="历史记录"]')) return;
       if (panelRef.current && !panelRef.current.contains(target)) {
         onClose();
       }
@@ -138,7 +139,7 @@ const HistoryPanel = ({ visible, onClose }: HistoryPanelProps) => {
         <span className="history-panel-title">历史记录</span>
         <span className="history-panel-count">{history.length} 条</span>
         <button className="history-panel-close" onClick={onClose}>
-          <i className="iconfont icon-guanbi" />
+          <X size={14} />
         </button>
       </div>
       <div className="history-panel-list">
@@ -168,7 +169,7 @@ const HistoryPanel = ({ visible, onClose }: HistoryPanelProps) => {
           disabled={historyIndex <= 0}
           onClick={undo}
         >
-          <i className="iconfont icon-chexiao" />
+          <Undo2 size={14} />
           撤销
         </button>
         <button
@@ -177,7 +178,7 @@ const HistoryPanel = ({ visible, onClose }: HistoryPanelProps) => {
           onClick={redo}
         >
           重做
-          <i className="iconfont icon-zhongzuo" />
+          <Redo2 size={14} />
         </button>
       </div>
     </div>

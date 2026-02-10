@@ -1,10 +1,15 @@
+@use "@/styles/variables.scss" as *;
 
 .app {
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
   .main-content {
     display: flex;
-    position: relative;
-    height: calc(100vh - 5.625rem);
-    background-color: hsl(210, 17%, 98%);
+    flex: 1;
+    min-height: 0;
+    background-color: $bg-page;
   }
 }

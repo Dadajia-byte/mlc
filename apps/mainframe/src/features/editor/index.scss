@@ -1,3 +1,5 @@
+@use "@/styles/variables.scss" as *;
+
 .editor {
   flex: 1;
   position: relative;
@@ -9,7 +11,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 9999;
+    z-index: $z-canvas-hand-overlay;
     pointer-events: auto;
     background-color: transparent;
   }

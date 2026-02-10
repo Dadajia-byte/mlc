@@ -1,0 +1,26 @@
+{
+  "name": "@mlc/schema",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "统一 Schema 规范库 - 类型定义、校验、属性配置体系",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "../../node_modules/.bin/tsc && vite build",
+    "type-check": "../../node_modules/.bin/tsc --noEmit",
+    "lint": "eslint . --ext .js,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.ts,.tsx --fix"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

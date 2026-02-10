@@ -1,0 +1,34 @@
+{
+  "name": "@mlc/materials",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "物料库 - 组件注册表、物料元数据与组件实现",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "../../node_modules/.bin/tsc && vite build",
+    "type-check": "../../node_modules/.bin/tsc --noEmit",
+    "lint": "eslint . --ext .js,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.ts,.tsx --fix"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@mlc/schema": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "antd": ">=5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0"
+  }
+}
